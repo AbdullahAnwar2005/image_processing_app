@@ -23,6 +23,7 @@ class ImageProcessor {
 
       // 2. High-priority Edge Detection branch
       if (edgeDetection) {
+        // Sobel works best on grayscale images
         processedImage = img.grayscale(processedImage);
         processedImage = _applySobelEdgeDetection(processedImage);
       } else {
@@ -53,6 +54,8 @@ class ImageProcessor {
     return decoded;
   }
 
+  /// Resizes the image if it exceeds the maximum dimension while maintaining aspect ratio.
+  /// This prevents memory issues and UI jank during processing of high-resolution images.
   static img.Image _resizeIfNeeded(img.Image src) {
     if (src.width <= maxProcessingDimension && src.height <= maxProcessingDimension) {
       return src;
@@ -82,10 +85,15 @@ class ImageProcessor {
       return src;
     }
 
-    // Mapping: UI Brightness 0..100 (50 neutral) -> adjustColor -0.5..0.5
+    // Mapping: UI Brightness 0..100 (50 neutral) -> Pixel offset -255..255
+    // Previous mapping (0.5 range) was too subtle to be visible.
+    // We now use a full intensity range (-128 to 128 is usually enough for dramatic change)
+    // but we'll go up to 255 for extreme ranges.
+    final double offset = (brightness - 50) * 4.0; // +/- 200 intensity
+
     return img.adjustColor(
       src,
-      brightness: (brightness - 50) / 100.0,
+      brightness: offset,
       contrast: contrast,
     );
   }
@@ -103,6 +111,7 @@ class ImageProcessor {
   }
 
   /// Manual implementation of Sobel Edge Detection
+  /// This implementation has been hardened to ensure visibility and compatibility with image 4.x.
   static img.Image _applySobelEdgeDetection(img.Image src) {
     final int width = src.width;
     final int height = src.height;
@@ -112,28 +121,32 @@ class ImageProcessor {
       return img.Image(width: width, height: height)..clear(img.ColorRgb8(0, 0, 0));
     }
 
+    // Create destination image with the same dimensions
     final img.Image dest = img.Image(width: width, height: height);
 
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
-        // Borders are set to black
+        // Set borders to black as kernels cannot be applied there
         if (x == 0 || x == width - 1 || y == 0 || y == height - 1) {
           dest.setPixelRgb(x, y, 0, 0, 0);
           continue;
         }
 
-        final p00 = src.getPixel(x - 1, y - 1).r;
-        final p10 = src.getPixel(x, y - 1).r;
-        final p20 = src.getPixel(x + 1, y - 1).r;
+        // Get intensities of the 3x3 neighborhood
+        // Using luminance ensures we get a consistent 0-255 scale regardless of channel format
+        final p00 = src.getPixel(x - 1, y - 1).luminance;
+        final p10 = src.getPixel(x, y - 1).luminance;
+        final p20 = src.getPixel(x + 1, y - 1).luminance;
 
-        final p01 = src.getPixel(x - 1, y).r;
-        final p21 = src.getPixel(x + 1, y).r;
+        final p01 = src.getPixel(x - 1, y).luminance;
+        final p21 = src.getPixel(x + 1, y).luminance;
 
-        final p02 = src.getPixel(x - 1, y + 1).r;
-        final p12 = src.getPixel(x, y + 1).r;
-        final p22 = src.getPixel(x + 1, y + 1).r;
+        final p02 = src.getPixel(x - 1, y + 1).luminance;
+        final p12 = src.getPixel(x, y + 1).luminance;
+        final p22 = src.getPixel(x + 1, y + 1).luminance;
 
-        // Sobel kernels Gx/Gy
+        // Sobel kernels Gx/Gy:
+        // These detect horizontal and vertical changes in intensity (gradients).
         final double gx = (
           -1 * p00 + 0 * p10 + 1 * p20 +
           -2 * p01 +           2 * p21 +
@@ -146,9 +159,12 @@ class ImageProcessor {
            1 * p02 +  2 * p12 +  1 * p22
         ).toDouble();
 
-        final double magnitude = math.sqrt(gx * gx + gy * gy);
+        // Calculate edge magnitude using Pythagorean theorem
+        // We add a slight gain (1.5x) to make edges more visible on high-res screens
+        final double magnitude = math.sqrt(gx * gx + gy * gy) * 1.5;
         final int finalVal = magnitude.clamp(0, 255).toInt();
 
+        // Set the pixel in the destination image
         dest.setPixelRgb(x, y, finalVal, finalVal, finalVal);
       }
     }

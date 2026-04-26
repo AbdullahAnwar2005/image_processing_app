@@ -54,10 +54,11 @@ class HistogramAnalyzer {
     for (int i = 0; i < 256; i++) {
       final int count = bins[i];
       if (count > 0) {
-        // Standard Deviation components
+        // Standard Deviation components: sum of squared differences from mean
         varianceSum += math.pow(i - mean, 2) * count;
 
-        // Entropy components
+        // Shannon Entropy: measures the average amount of information/uncertainty
+        // Formula: H = -sum(p * log2(p)) where p is the probability of an intensity level
         final double p = count / totalPixels;
         entropy -= p * (math.log(p) / math.log(2));
       }
