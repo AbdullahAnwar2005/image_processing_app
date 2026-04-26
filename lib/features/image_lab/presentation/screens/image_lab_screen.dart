@@ -70,42 +70,50 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
     });
   }
 
+  Future<void> _reprocessImage() async {
+    if (_selectedImageBytes == null) return;
+
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      final processed = await ImageProcessor.processImage(
+        originalBytes: _selectedImageBytes!,
+        grayscale: _selectedFilters.contains('Grayscale'),
+        brightness: _brightness,
+        contrast: _contrast,
+      );
+
+      if (mounted) {
+        setState(() {
+          _processedImageBytes = processed;
+          _isProcessing = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _processedImageBytes = _selectedImageBytes;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not process this image.')),
+        );
+      }
+    }
+  }
+
   Future<void> _onFilterToggled(String filter) async {
     if (filter == 'Grayscale') {
-      final bool wasSelected = _selectedFilters.contains(filter);
-      
       setState(() {
-        if (wasSelected) {
+        if (_selectedFilters.contains(filter)) {
           _selectedFilters.remove(filter);
-          _processedImageBytes = _selectedImageBytes;
         } else {
           _selectedFilters.add(filter);
-          _isProcessing = true;
         }
       });
-
-      if (!wasSelected && _selectedImageBytes != null) {
-        try {
-          final processed = await ImageProcessor.applyGrayscale(_selectedImageBytes!);
-          if (mounted) {
-            setState(() {
-              _processedImageBytes = processed;
-              _isProcessing = false;
-            });
-          }
-        } catch (e) {
-          if (mounted) {
-            setState(() {
-              _isProcessing = false;
-              _selectedFilters.remove(filter);
-              _processedImageBytes = _selectedImageBytes;
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Could not process this image.')),
-            );
-          }
-        }
-      }
+      await _reprocessImage();
     } else {
       // Other filters are not yet implemented
       setState(() {
@@ -144,6 +152,8 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
               onBrightnessChanged: (val) => setState(() => _brightness = val),
               onContrastChanged: (val) => setState(() => _contrast = val),
               onBlurRadiusChanged: (val) => setState(() => _blurRadius = val),
+              onBrightnessChangeEnd: (val) => _reprocessImage(),
+              onContrastChangeEnd: (val) => _reprocessImage(),
               onReset: _resetImage,
             ),
     );

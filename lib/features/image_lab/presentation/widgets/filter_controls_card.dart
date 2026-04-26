@@ -12,6 +12,9 @@ class FilterControlsCard extends StatelessWidget {
   final ValueChanged<double> onBrightnessChanged;
   final ValueChanged<double> onContrastChanged;
   final ValueChanged<double> onBlurRadiusChanged;
+  final ValueChanged<double>? onBrightnessChangeEnd;
+  final ValueChanged<double>? onContrastChangeEnd;
+  final ValueChanged<double>? onBlurRadiusChangeEnd;
 
   const FilterControlsCard({
     super.key,
@@ -23,6 +26,9 @@ class FilterControlsCard extends StatelessWidget {
     required this.onBrightnessChanged,
     required this.onContrastChanged,
     required this.onBlurRadiusChanged,
+    this.onBrightnessChangeEnd,
+    this.onContrastChangeEnd,
+    this.onBlurRadiusChangeEnd,
   });
 
   @override
@@ -65,6 +71,7 @@ class FilterControlsCard extends StatelessWidget {
             min: -100,
             max: 100,
             onChanged: onBrightnessChanged,
+            onChangeEnd: onBrightnessChangeEnd,
             activeColor: AppColors.brightnessSlider,
             displayValue: brightness.toInt().toString(),
           ),
@@ -75,6 +82,7 @@ class FilterControlsCard extends StatelessWidget {
             min: 0,
             max: 2,
             onChanged: onContrastChanged,
+            onChangeEnd: onContrastChangeEnd,
             activeColor: AppColors.contrastSlider,
             displayValue: contrast.toStringAsFixed(1),
           ),
@@ -85,6 +93,7 @@ class FilterControlsCard extends StatelessWidget {
             min: 0,
             max: 10,
             onChanged: onBlurRadiusChanged,
+            onChangeEnd: onBlurRadiusChangeEnd,
             activeColor: AppColors.blurSlider,
             displayValue: blurRadius.toInt().toString(),
           ),
@@ -99,6 +108,7 @@ class FilterControlsCard extends StatelessWidget {
     required double min,
     required double max,
     required ValueChanged<double> onChanged,
+    ValueChanged<double>? onChangeEnd,
     required Color activeColor,
     required String displayValue,
   }) {
@@ -140,6 +150,7 @@ class FilterControlsCard extends StatelessWidget {
             min: min,
             max: max,
             onChanged: onChanged,
+            onChangeEnd: onChangeEnd,
           ),
         ),
       ],

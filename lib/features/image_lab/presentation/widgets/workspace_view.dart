@@ -26,6 +26,9 @@ class WorkspaceView extends StatelessWidget {
   final ValueChanged<double> onBrightnessChanged;
   final ValueChanged<double> onContrastChanged;
   final ValueChanged<double> onBlurRadiusChanged;
+  final ValueChanged<double>? onBrightnessChangeEnd;
+  final ValueChanged<double>? onContrastChangeEnd;
+  final ValueChanged<double>? onBlurRadiusChangeEnd;
   final VoidCallback onReset;
 
   const WorkspaceView({
@@ -43,6 +46,9 @@ class WorkspaceView extends StatelessWidget {
     required this.onBrightnessChanged,
     required this.onContrastChanged,
     required this.onBlurRadiusChanged,
+    this.onBrightnessChangeEnd,
+    this.onContrastChangeEnd,
+    this.onBlurRadiusChangeEnd,
     required this.onReset,
   });
 
@@ -80,6 +86,9 @@ class WorkspaceView extends StatelessWidget {
                     onBrightnessChanged: onBrightnessChanged,
                     onContrastChanged: onContrastChanged,
                     onBlurRadiusChanged: onBlurRadiusChanged,
+                    onBrightnessChangeEnd: onBrightnessChangeEnd,
+                    onContrastChangeEnd: onContrastChangeEnd,
+                    onBlurRadiusChangeEnd: onBlurRadiusChangeEnd,
                   ),
                   const SizedBox(height: 24),
                   const HistogramCard(),
