@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image_processing_app/features/image_lab/theme/app_colors.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/workspace_view.dart';
+import '../../data/image_processor.dart';
 
 enum PreviewMode { original, processed, compare }
 
@@ -16,6 +17,9 @@ class ImageLabScreen extends StatefulWidget {
 
 class _ImageLabScreenState extends State<ImageLabScreen> {
   Uint8List? _selectedImageBytes;
+  Uint8List? _processedImageBytes;
+  bool _isProcessing = false;
+  
   PreviewMode _previewMode = PreviewMode.compare;
   double _brightness = 0;
   double _contrast = 1.0;
@@ -31,13 +35,18 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
         final Uint8List bytes = await image.readAsBytes();
         setState(() {
           _selectedImageBytes = bytes;
+          _processedImageBytes = bytes;
+          _selectedFilters.clear();
+          _brightness = 0;
+          _contrast = 1.0;
+          _blurRadius = 0;
         });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking image: $e')),
+        );
       }
     }
   }
@@ -45,6 +54,8 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
   void _resetImage() {
     setState(() {
       _selectedImageBytes = null;
+      _processedImageBytes = null;
+      _isProcessing = false;
       _previewMode = PreviewMode.compare;
       _brightness = 0;
       _contrast = 1.0;
@@ -59,14 +70,58 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
     });
   }
 
-  void _onFilterToggled(String filter) {
-    setState(() {
-      if (_selectedFilters.contains(filter)) {
-        _selectedFilters.remove(filter);
-      } else {
-        _selectedFilters.add(filter);
+  Future<void> _onFilterToggled(String filter) async {
+    if (filter == 'Grayscale') {
+      final bool wasSelected = _selectedFilters.contains(filter);
+      
+      setState(() {
+        if (wasSelected) {
+          _selectedFilters.remove(filter);
+          _processedImageBytes = _selectedImageBytes;
+        } else {
+          _selectedFilters.add(filter);
+          _isProcessing = true;
+        }
+      });
+
+      if (!wasSelected && _selectedImageBytes != null) {
+        try {
+          final processed = await ImageProcessor.applyGrayscale(_selectedImageBytes!);
+          if (mounted) {
+            setState(() {
+              _processedImageBytes = processed;
+              _isProcessing = false;
+            });
+          }
+        } catch (e) {
+          if (mounted) {
+            setState(() {
+              _isProcessing = false;
+              _selectedFilters.remove(filter);
+              _processedImageBytes = _selectedImageBytes;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Could not process this image.')),
+            );
+          }
+        }
       }
-    });
+    } else {
+      // Other filters are not yet implemented
+      setState(() {
+        if (_selectedFilters.contains(filter)) {
+          _selectedFilters.remove(filter);
+        } else {
+          _selectedFilters.add(filter);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('This filter will be implemented in a later sprint.'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -77,6 +132,8 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
           ? EmptyStateView(onPickImage: _pickImage)
           : WorkspaceView(
               selectedImageBytes: _selectedImageBytes!,
+              processedImageBytes: _processedImageBytes ?? _selectedImageBytes!,
+              isProcessing: _isProcessing,
               previewMode: _previewMode,
               brightness: _brightness,
               contrast: _contrast,

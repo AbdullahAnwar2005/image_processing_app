@@ -9,12 +9,14 @@ class ImageComparisonCard extends StatelessWidget {
   final Uint8List originalBytes;
   final Uint8List processedBytes;
   final PreviewMode mode;
+  final bool isProcessing;
 
   const ImageComparisonCard({
     super.key,
     required this.originalBytes,
     required this.processedBytes,
     required this.mode,
+    this.isProcessing = false,
   });
 
   @override
@@ -52,6 +54,8 @@ class ImageComparisonCard extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             Image.memory(processedBytes, fit: BoxFit.cover),
+            if (isProcessing)
+              _buildLoadingOverlay(),
             _buildLabelOverlay('PROCESSED', AppColors.primary.withOpacity(0.75)),
           ],
         );
@@ -73,6 +77,8 @@ class ImageComparisonCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   Image.memory(processedBytes, fit: BoxFit.cover),
+                  if (isProcessing)
+                    _buildLoadingOverlay(),
                   _buildLabelOverlay('PROCESSED', AppColors.primary.withOpacity(0.75)),
                 ],
               ),
@@ -80,6 +86,22 @@ class ImageComparisonCard extends StatelessWidget {
           ],
         );
     }
+  }
+
+  Widget _buildLoadingOverlay() {
+    return Container(
+      color: Colors.black26,
+      child: const Center(
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: CircularProgressIndicator(
+            color: Colors.white,
+            strokeWidth: 3,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildLabelOverlay(String text, Color color) {

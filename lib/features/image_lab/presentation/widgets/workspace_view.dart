@@ -14,6 +14,8 @@ import 'stats_row.dart';
 
 class WorkspaceView extends StatelessWidget {
   final Uint8List selectedImageBytes;
+  final Uint8List processedImageBytes;
+  final bool isProcessing;
   final PreviewMode previewMode;
   final double brightness;
   final double contrast;
@@ -29,6 +31,8 @@ class WorkspaceView extends StatelessWidget {
   const WorkspaceView({
     super.key,
     required this.selectedImageBytes,
+    required this.processedImageBytes,
+    required this.isProcessing,
     required this.previewMode,
     required this.brightness,
     required this.contrast,
@@ -57,8 +61,8 @@ class WorkspaceView extends StatelessWidget {
                   const SizedBox(height: 24),
                   ImageComparisonCard(
                     originalBytes: selectedImageBytes,
-                    processedBytes:
-                        selectedImageBytes, // Placeholder for Sprint 1
+                    processedBytes: processedImageBytes,
+                    isProcessing: isProcessing,
                     mode: previewMode,
                   ),
                   const SizedBox(height: 16),
