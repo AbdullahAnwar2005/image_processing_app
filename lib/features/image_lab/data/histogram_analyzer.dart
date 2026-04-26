@@ -1,3 +1,4 @@
+import 'dart:isolate';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:image/image.dart' as img;
@@ -7,36 +8,38 @@ import '../domain/histogram_data.dart';
 class HistogramAnalyzer {
   /// Analyzes image bytes and returns histogram data for R, G, and B channels.
   static Future<Map<HistogramChannel, HistogramData>> analyze(Uint8List imageBytes) async {
-    final img.Image? decodedImage = img.decodeImage(imageBytes);
+    return Isolate.run(() {
+      final img.Image? decodedImage = img.decodeImage(imageBytes);
 
-    if (decodedImage == null) {
-      throw Exception('Could not decode image for histogram analysis.');
-    }
+      if (decodedImage == null) {
+        throw Exception('Could not decode image for histogram analysis.');
+      }
 
-    final int totalPixels = decodedImage.width * decodedImage.height;
-    if (totalPixels == 0) {
+      final int totalPixels = decodedImage.width * decodedImage.height;
+      if (totalPixels == 0) {
+        return {
+          HistogramChannel.red: HistogramData.empty(),
+          HistogramChannel.green: HistogramData.empty(),
+          HistogramChannel.blue: HistogramData.empty(),
+        };
+      }
+
+      final List<int> redBins = List<int>.filled(256, 0);
+      final List<int> greenBins = List<int>.filled(256, 0);
+      final List<int> blueBins = List<int>.filled(256, 0);
+
+      for (final pixel in decodedImage) {
+        redBins[pixel.r.toInt()]++;
+        greenBins[pixel.g.toInt()]++;
+        blueBins[pixel.b.toInt()]++;
+      }
+
       return {
-        HistogramChannel.red: HistogramData.empty(),
-        HistogramChannel.green: HistogramData.empty(),
-        HistogramChannel.blue: HistogramData.empty(),
+        HistogramChannel.red: _calculateStats(redBins, totalPixels),
+        HistogramChannel.green: _calculateStats(greenBins, totalPixels),
+        HistogramChannel.blue: _calculateStats(blueBins, totalPixels),
       };
-    }
-
-    final List<int> redBins = List<int>.filled(256, 0);
-    final List<int> greenBins = List<int>.filled(256, 0);
-    final List<int> blueBins = List<int>.filled(256, 0);
-
-    for (final pixel in decodedImage) {
-      redBins[pixel.r.toInt()]++;
-      greenBins[pixel.g.toInt()]++;
-      blueBins[pixel.b.toInt()]++;
-    }
-
-    return {
-      HistogramChannel.red: _calculateStats(redBins, totalPixels),
-      HistogramChannel.green: _calculateStats(greenBins, totalPixels),
-      HistogramChannel.blue: _calculateStats(blueBins, totalPixels),
-    };
+    });
   }
 
   static HistogramData _calculateStats(List<int> bins, int totalPixels) {

@@ -64,6 +64,33 @@ class FilterControlsCard extends StatelessWidget {
             selectedFilters: selectedFilters,
             onFilterToggled: onFilterToggled,
           ),
+          if (selectedFilters.contains('Edge Detection')) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 16, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Edge detection uses a grayscale Sobel pipeline. Other adjustments are ignored while active.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           _buildSlider(
             label: 'Brightness',

@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:gal/gal.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:image_processing_app/features/image_lab/theme/app_colors.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/workspace_view.dart';
@@ -109,6 +112,59 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
     }
   }
 
+  Future<void> _exportImage() async {
+    final bytes = _processedImageBytes ?? _selectedImageBytes;
+    if (bytes == null) return;
+
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      // 1. Check for access
+      final hasAccess = await Gal.hasAccess();
+      if (!hasAccess) {
+        final granted = await Gal.requestAccess();
+        if (!granted) {
+          throw Exception('Gallery access denied.');
+        }
+      }
+
+      // 2. Save to temporary file
+      final directory = await getTemporaryDirectory();
+      final String filePath = '${directory.path}/processed_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final File file = File(filePath);
+      await file.writeAsBytes(bytes);
+
+      // 3. Save to gallery
+      await Gal.putImage(filePath);
+
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Image exported successfully to gallery!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _reprocessImage() async {
     if (_selectedImageBytes == null) return;
 
@@ -123,6 +179,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
         brightness: _brightness,
         contrast: _contrast,
         blurRadius: _blurRadius,
+        edgeDetection: _selectedFilters.contains('Edge Detection'),
       );
 
       if (mounted) {
@@ -146,7 +203,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
   }
 
   Future<void> _onFilterToggled(String filter) async {
-    if (filter == 'Grayscale') {
+    if (filter == 'Grayscale' || filter == 'Edge Detection') {
       setState(() {
         if (_selectedFilters.contains(filter)) {
           _selectedFilters.remove(filter);
@@ -167,7 +224,6 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
       });
       await _reprocessImage();
     } else if (filter == 'Brightness' || filter == 'Contrast') {
-      // Visual toggle only for now as per Sprint 4 requirements
       setState(() {
         if (_selectedFilters.contains(filter)) {
           _selectedFilters.remove(filter);
@@ -176,7 +232,6 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
         }
       });
     } else {
-      // Edge Detection not yet implemented
       setState(() {
         if (_selectedFilters.contains(filter)) {
           _selectedFilters.remove(filter);
@@ -232,6 +287,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
               onContrastChangeEnd: (val) => _reprocessImage(),
               onBlurRadiusChangeEnd: (val) => _reprocessImage(),
               onReset: _resetImage,
+              onExport: _exportImage,
             ),
     );
   }

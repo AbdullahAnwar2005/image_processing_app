@@ -35,6 +35,7 @@ class WorkspaceView extends StatelessWidget {
   final ValueChanged<double>? onContrastChangeEnd;
   final ValueChanged<double>? onBlurRadiusChangeEnd;
   final VoidCallback onReset;
+  final VoidCallback onExport;
 
   const WorkspaceView({
     super.key,
@@ -59,6 +60,7 @@ class WorkspaceView extends StatelessWidget {
     this.onContrastChangeEnd,
     this.onBlurRadiusChangeEnd,
     required this.onReset,
+    required this.onExport,
   });
 
   @override
@@ -189,7 +191,7 @@ class WorkspaceView extends StatelessWidget {
           Expanded(
             flex: 2,
             child: FilledButton(
-              onPressed: null, // Disabled for Sprint 1
+              onPressed: onExport,
               style: FilledButton.styleFrom(
                 minimumSize: const Size(0, AppSpacing.buttonHeight),
                 backgroundColor: AppColors.primary,
