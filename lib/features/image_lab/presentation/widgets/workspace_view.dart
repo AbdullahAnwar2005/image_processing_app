@@ -10,7 +10,8 @@ import 'image_comparison_card.dart';
 import 'segmented_preview_control.dart';
 import 'filter_controls_card.dart';
 import 'histogram_card.dart';
-import 'stats_row.dart';
+import '../../domain/histogram_channel.dart';
+import '../../domain/histogram_data.dart';
 
 class WorkspaceView extends StatelessWidget {
   final Uint8List selectedImageBytes;
@@ -21,6 +22,10 @@ class WorkspaceView extends StatelessWidget {
   final double contrast;
   final double blurRadius;
   final Set<String> selectedFilters;
+  final Map<HistogramChannel, HistogramData>? histogramByChannel;
+  final HistogramChannel selectedHistogramChannel;
+  final bool isAnalyzingHistogram;
+  final Function(HistogramChannel) onHistogramChannelChanged;
   final Function(PreviewMode) onPreviewModeChanged;
   final Function(String) onFilterToggled;
   final ValueChanged<double> onBrightnessChanged;
@@ -41,6 +46,10 @@ class WorkspaceView extends StatelessWidget {
     required this.contrast,
     required this.blurRadius,
     required this.selectedFilters,
+    required this.histogramByChannel,
+    required this.selectedHistogramChannel,
+    required this.isAnalyzingHistogram,
+    required this.onHistogramChannelChanged,
     required this.onPreviewModeChanged,
     required this.onFilterToggled,
     required this.onBrightnessChanged,
@@ -90,10 +99,13 @@ class WorkspaceView extends StatelessWidget {
                     onContrastChangeEnd: onContrastChangeEnd,
                     onBlurRadiusChangeEnd: onBlurRadiusChangeEnd,
                   ),
-                  const SizedBox(height: 24),
-                  const HistogramCard(),
-                  const SizedBox(height: 24),
-                  const StatsRow(),
+                   const SizedBox(height: 24),
+                  HistogramCard(
+                    histogramByChannel: histogramByChannel,
+                    selectedChannel: selectedHistogramChannel,
+                    onChannelChanged: onHistogramChannelChanged,
+                    isLoading: isAnalyzingHistogram,
+                  ),
                   const SizedBox(height: 32),
                 ],
               ),

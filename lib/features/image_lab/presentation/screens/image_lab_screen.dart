@@ -5,6 +5,9 @@ import 'package:image_processing_app/features/image_lab/theme/app_colors.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/workspace_view.dart';
 import '../../data/image_processor.dart';
+import '../../data/histogram_analyzer.dart';
+import '../../domain/histogram_channel.dart';
+import '../../domain/histogram_data.dart';
 
 enum PreviewMode { original, processed, compare }
 
@@ -19,6 +22,11 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
   Uint8List? _selectedImageBytes;
   Uint8List? _processedImageBytes;
   bool _isProcessing = false;
+
+  // Histogram State
+  Map<HistogramChannel, HistogramData>? _histogramByChannel;
+  HistogramChannel _selectedHistogramChannel = HistogramChannel.red;
+  bool _isAnalyzingHistogram = false;
   
   PreviewMode _previewMode = PreviewMode.compare;
   double _brightness = 0;
@@ -41,6 +49,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
           _contrast = 1.0;
           _blurRadius = 0;
         });
+        await _analyzeCurrentHistogram();
       }
     } catch (e) {
       if (mounted) {
@@ -56,6 +65,8 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
       _selectedImageBytes = null;
       _processedImageBytes = null;
       _isProcessing = false;
+      _histogramByChannel = null;
+      _isAnalyzingHistogram = false;
       _previewMode = PreviewMode.compare;
       _brightness = 0;
       _contrast = 1.0;
@@ -68,6 +79,34 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
     setState(() {
       _previewMode = mode;
     });
+  }
+
+  Future<void> _analyzeCurrentHistogram() async {
+    final bytes = _processedImageBytes ?? _selectedImageBytes;
+    if (bytes == null) return;
+
+    setState(() {
+      _isAnalyzingHistogram = true;
+    });
+
+    try {
+      final result = await HistogramAnalyzer.analyze(bytes);
+      if (mounted) {
+        setState(() {
+          _histogramByChannel = result;
+          _isAnalyzingHistogram = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isAnalyzingHistogram = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not analyze image histogram.')),
+        );
+      }
+    }
   }
 
   Future<void> _reprocessImage() async {
@@ -91,6 +130,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
           _processedImageBytes = processed;
           _isProcessing = false;
         });
+        await _analyzeCurrentHistogram();
       }
     } catch (e) {
       if (mounted) {
@@ -168,6 +208,12 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
               contrast: _contrast,
               blurRadius: _blurRadius,
               selectedFilters: _selectedFilters,
+              histogramByChannel: _histogramByChannel,
+              selectedHistogramChannel: _selectedHistogramChannel,
+              isAnalyzingHistogram: _isAnalyzingHistogram,
+              onHistogramChannelChanged: (channel) {
+                setState(() => _selectedHistogramChannel = channel);
+              },
               onPreviewModeChanged: _onPreviewModeChanged,
               onFilterToggled: _onFilterToggled,
               onBrightnessChanged: (val) => setState(() => _brightness = val),

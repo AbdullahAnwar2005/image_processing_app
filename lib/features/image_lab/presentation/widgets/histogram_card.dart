@@ -1,22 +1,29 @@
-import 'dart:math';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
+import '../../domain/histogram_channel.dart';
+import '../../domain/histogram_data.dart';
 import 'lab_card.dart';
 
-class HistogramCard extends StatefulWidget {
-  const HistogramCard({super.key});
+class HistogramCard extends StatelessWidget {
+  final Map<HistogramChannel, HistogramData>? histogramByChannel;
+  final HistogramChannel selectedChannel;
+  final Function(HistogramChannel) onChannelChanged;
+  final bool isLoading;
 
-  @override
-  State<HistogramCard> createState() => _HistogramCardState();
-}
-
-class _HistogramCardState extends State<HistogramCard> {
-  String selectedChannel = 'R';
+  const HistogramCard({
+    super.key,
+    required this.histogramByChannel,
+    required this.selectedChannel,
+    required this.onChannelChanged,
+    required this.isLoading,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final HistogramData? currentData = histogramByChannel?[selectedChannel];
+
     return LabCard(
-      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -29,160 +36,195 @@ class _HistogramCardState extends State<HistogramCard> {
                   Text(
                     'Pixel Intensity Distribution',
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
                   Text(
-                    'Histogram preview',
+                    'Histogram based on processed image',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.textMuted,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
               ),
-              Row(
-                children: [
-                  _buildChannelButton('R', AppColors.histogramR),
-                  const SizedBox(width: 4),
-                  _buildChannelButton('G', AppColors.histogramG),
-                  const SizedBox(width: 4),
-                  _buildChannelButton('B', AppColors.histogramB),
-                ],
-              ),
+              if (isLoading)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
+                ),
             ],
           ),
+          const SizedBox(height: 16),
+          _buildChannelSelector(),
           const SizedBox(height: 20),
-          _buildChartPlaceholder(),
+          SizedBox(
+            height: 140,
+            child: currentData == null || currentData.totalPixels == 0
+                ? _buildEmptyState()
+                : _buildChart(currentData),
+          ),
           const SizedBox(height: 20),
-          _buildInternalStats(),
+          const Divider(height: 1, color: AppColors.divider),
+          const SizedBox(height: 16),
+          _buildStats(currentData),
         ],
       ),
     );
   }
 
-  Widget _buildChannelButton(String label, Color color) {
-    final bool isSelected = selectedChannel == label;
-    return GestureDetector(
-      onTap: () => setState(() => selectedChannel = label),
-      child: Container(
-        width: 28,
-        height: 28,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? color : AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _buildChannelSelector() {
+    return Row(
+      children: HistogramChannel.values.map((channel) {
+        final isSelected = channel == selectedChannel;
+        Color channelColor;
+        switch (channel) {
+          case HistogramChannel.red:
+            channelColor = Colors.red.shade400;
+            break;
+          case HistogramChannel.green:
+            channelColor = Colors.green.shade400;
+            break;
+          case HistogramChannel.blue:
+            channelColor = Colors.blue.shade400;
+            break;
+        }
 
-  Widget _buildChartPlaceholder() {
-    final Color channelColor = selectedChannel == 'R'
-        ? AppColors.histogramR
-        : selectedChannel == 'G'
-            ? AppColors.histogramG
-            : AppColors.histogramB;
-
-    return Container(
-      height: 140,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceInput,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          // Grid lines
-          Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: List.generate(
-              4,
-              (index) => Divider(
-                color: AppColors.divider.withOpacity(0.3),
-                height: 1,
-                thickness: 1,
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InkWell(
+            onTap: () => onChannelChanged(channel),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: isSelected ? channelColor.withOpacity(0.1) : Colors.transparent,
+                border: Border.all(
+                  color: isSelected ? channelColor : AppColors.divider,
+                  width: 1.5,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                channel.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected ? channelColor : AppColors.textSecondary,
+                ),
               ),
             ),
           ),
-          // Bars
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(
-                24,
-                (index) {
-                  final heightFactor = 0.2 + (Random().nextDouble() * 0.8);
-                  return Container(
-                    width: 8,
-                    height: 140 * heightFactor,
-                    decoration: BoxDecoration(
-                      color: channelColor.withOpacity(0.8),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(2),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Text(
+        histogramByChannel == null ? 'Pick an image to view histogram data.' : 'No pixel data available.',
+        style: const TextStyle(
+          fontSize: 12,
+          color: AppColors.textSecondary,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChart(HistogramData data) {
+    // Group 256 bins into 32 bars (group size 8)
+    const int barCount = 32;
+    const int groupSize = 8;
+    final List<double> groupedValues = List.filled(barCount, 0);
+
+    for (int i = 0; i < 256; i++) {
+      groupedValues[i ~/ groupSize] += data.bins[i].toDouble();
+    }
+
+    Color barColor;
+    switch (selectedChannel) {
+      case HistogramChannel.red:
+        barColor = const Color(0xFFEF4444).withOpacity(0.8);
+        break;
+      case HistogramChannel.green:
+        barColor = const Color(0xFF22C55E).withOpacity(0.8);
+        break;
+      case HistogramChannel.blue:
+        barColor = const Color(0xFF3B82F6).withOpacity(0.8);
+        break;
+    }
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: groupedValues.reduce((a, b) => a > b ? a : b) * 1.1,
+        barTouchData: BarTouchData(enabled: false),
+        titlesData: const FlTitlesData(show: false),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) => const FlLine(
+            color: Color(0xFFF1F5F9),
+            strokeWidth: 1,
           ),
-        ],
+        ),
+        borderData: FlBorderData(show: false),
+        barGroups: List.generate(barCount, (i) {
+          return BarChartGroupData(
+            x: i,
+            barRods: [
+              BarChartRodData(
+                toY: groupedValues[i],
+                color: barColor,
+                width: 4,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+              ),
+            ],
+          );
+        }),
       ),
     );
   }
 
-  Widget _buildInternalStats() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceInput,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceAlt),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildMiniStat('Mean', '--'),
-          _buildMiniStat('Std Dev', '--'),
-          _buildMiniStat('Entropy', '--'),
-        ],
-      ),
+  Widget _buildStats(HistogramData? data) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildStatItem('Mean', data?.mean.toStringAsFixed(1) ?? '0.0'),
+        _buildStatItem('Std Dev', data?.standardDeviation.toStringAsFixed(1) ?? '0.0'),
+        _buildStatItem('Entropy', data?.entropy.toStringAsFixed(2) ?? '0.00'),
+      ],
     );
   }
 
-  Widget _buildMiniStat(String label, String value) {
+  Widget _buildStatItem(String label, String value) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          value,
+          label,
           style: const TextStyle(
-            color: AppColors.accent,
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
           ),
         ),
         const SizedBox(height: 2),
         Text(
-          label.toUpperCase(),
+          value,
           style: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
           ),
         ),
       ],
