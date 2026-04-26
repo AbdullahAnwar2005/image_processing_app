@@ -10,6 +10,7 @@ class ImageComparisonCard extends StatelessWidget {
   final Uint8List processedBytes;
   final PreviewMode mode;
   final bool isProcessing;
+  final Function(Uint8List, String) onImagePressed;
 
   const ImageComparisonCard({
     super.key,
@@ -17,6 +18,7 @@ class ImageComparisonCard extends StatelessWidget {
     required this.processedBytes,
     required this.mode,
     this.isProcessing = false,
+    required this.onImagePressed,
   });
 
   @override
@@ -42,50 +44,67 @@ class ImageComparisonCard extends StatelessWidget {
   Widget _buildImageContent() {
     switch (mode) {
       case PreviewMode.original:
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.memory(originalBytes, fit: BoxFit.cover),
-            _buildLabelOverlay('ORIGINAL', Colors.black.withOpacity(0.55)),
-          ],
+        return _buildTappableImage(
+          bytes: originalBytes,
+          label: 'ORIGINAL',
+          labelColor: Colors.black.withOpacity(0.55),
+          heroTag: 'original_preview',
         );
       case PreviewMode.processed:
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.memory(processedBytes, fit: BoxFit.cover),
-            if (isProcessing)
-              _buildLoadingOverlay(),
-            _buildLabelOverlay('PROCESSED', AppColors.primary.withOpacity(0.75)),
-          ],
+        return _buildTappableImage(
+          bytes: processedBytes,
+          label: 'PROCESSED',
+          labelColor: AppColors.primary.withOpacity(0.75),
+          heroTag: 'processed_preview',
+          showLoading: isProcessing,
         );
       case PreviewMode.compare:
         return Row(
           children: [
             Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.memory(originalBytes, fit: BoxFit.cover),
-                  _buildLabelOverlay('ORIGINAL', Colors.black.withOpacity(0.55)),
-                ],
+              child: _buildTappableImage(
+                bytes: originalBytes,
+                label: 'ORIGINAL',
+                labelColor: Colors.black.withOpacity(0.55),
+                heroTag: 'compare_original',
               ),
             ),
             Container(width: 2, color: Colors.white),
             Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.memory(processedBytes, fit: BoxFit.cover),
-                  if (isProcessing)
-                    _buildLoadingOverlay(),
-                  _buildLabelOverlay('PROCESSED', AppColors.primary.withOpacity(0.75)),
-                ],
+              child: _buildTappableImage(
+                bytes: processedBytes,
+                label: 'PROCESSED',
+                labelColor: AppColors.primary.withOpacity(0.75),
+                heroTag: 'compare_processed',
+                showLoading: isProcessing,
               ),
             ),
           ],
         );
     }
+  }
+
+  Widget _buildTappableImage({
+    required Uint8List bytes,
+    required String label,
+    required Color labelColor,
+    required String heroTag,
+    bool showLoading = false,
+  }) {
+    return GestureDetector(
+      onTap: () => onImagePressed(bytes, heroTag),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Hero(
+            tag: heroTag,
+            child: Image.memory(bytes, fit: BoxFit.cover),
+          ),
+          if (showLoading) _buildLoadingOverlay(),
+          _buildLabelOverlay(label, labelColor),
+        ],
+      ),
+    );
   }
 
   Widget _buildLoadingOverlay() {
@@ -131,27 +150,35 @@ class ImageComparisonCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.only(top: 12),
       decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.surfaceAlt)),
+        border: Border(top: BorderSide(color: AppColors.divider)),
       ),
-      child: Row(
+      child: const Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildMetric('WIDTH', '--'),
-          _buildMetric('HEIGHT', '--'),
-          _buildMetric('FORMAT', 'JPG/PNG'),
+          _Metric(label: 'FORMAT', value: 'JPG/PNG'),
+          _Metric(label: 'QUALITY', value: 'HD'),
+          _Metric(label: 'MODE', value: 'RGB'),
         ],
       ),
     );
   }
+}
 
-  Widget _buildMetric(String label, String value) {
+class _Metric extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _Metric({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
         Text(
           value,
           style: const TextStyle(
-            color: AppColors.accent,
-            fontSize: 14,
+            color: AppColors.textSecondary,
+            fontSize: 13,
             fontWeight: FontWeight.w800,
           ),
         ),

@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:gal/gal.dart';
@@ -7,10 +7,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:image_processing_app/features/image_lab/theme/app_colors.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/workspace_view.dart';
+import '../widgets/full_image_preview.dart';
 import '../../data/image_processor.dart';
 import '../../data/histogram_analyzer.dart';
 import '../../domain/histogram_channel.dart';
 import '../../domain/histogram_data.dart';
+import '../../domain/filter_defaults.dart';
 
 enum PreviewMode { original, processed, compare }
 
@@ -32,32 +34,42 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
   bool _isAnalyzingHistogram = false;
   
   PreviewMode _previewMode = PreviewMode.compare;
-  double _brightness = 0;
-  double _contrast = 1.0;
-  double _blurRadius = 0;
+  double _brightness = FilterDefaults.brightness;
+  double _contrast = FilterDefaults.contrast;
+  double _blurRadius = FilterDefaults.blurRadius;
   final Set<String> _selectedFilters = {};
 
   final ImagePicker _picker = ImagePicker();
 
+  bool get _hasActiveProcessing {
+    if (_selectedFilters.contains('Edge Detection')) return true;
+    if (_selectedFilters.contains('Grayscale')) return true;
+    if (_brightness != FilterDefaults.brightness) return true;
+    if (_contrast != FilterDefaults.contrast) return true;
+    if (_blurRadius > FilterDefaults.blurRadius) return true;
+    return false;
+  }
+
   Future<void> _pickImage() async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        final Uint8List bytes = await image.readAsBytes();
-        setState(() {
-          _selectedImageBytes = bytes;
-          _processedImageBytes = bytes;
-          _selectedFilters.clear();
-          _brightness = 0;
-          _contrast = 1.0;
-          _blurRadius = 0;
-        });
-        await _analyzeCurrentHistogram();
-      }
+      if (image == null) return; // User cancelled
+
+      final Uint8List bytes = await image.readAsBytes();
+      setState(() {
+        _selectedImageBytes = bytes;
+        _processedImageBytes = bytes;
+        _selectedFilters.clear();
+        _brightness = FilterDefaults.brightness;
+        _contrast = FilterDefaults.contrast;
+        _blurRadius = FilterDefaults.blurRadius;
+      });
+      await _analyzeCurrentHistogram();
     } catch (e) {
+      debugPrint('Error picking image: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking image: $e')),
+          const SnackBar(content: Text('Could not load this image.')),
         );
       }
     }
@@ -71,9 +83,9 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
       _histogramByChannel = null;
       _isAnalyzingHistogram = false;
       _previewMode = PreviewMode.compare;
-      _brightness = 0;
-      _contrast = 1.0;
-      _blurRadius = 0;
+      _brightness = FilterDefaults.brightness;
+      _contrast = FilterDefaults.contrast;
+      _blurRadius = FilterDefaults.blurRadius;
       _selectedFilters.clear();
     });
   }
@@ -82,6 +94,22 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
     setState(() {
       _previewMode = mode;
     });
+  }
+
+  void _showFullPreview(Uint8List bytes, String heroTag) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black.withOpacity(0.9),
+        pageBuilder: (context, animation, secondaryAnimation) => FullImagePreview(
+          imageBytes: bytes,
+          heroTag: heroTag,
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
   }
 
   Future<void> _analyzeCurrentHistogram() async {
@@ -101,6 +129,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
         });
       }
     } catch (e) {
+      debugPrint('Histogram analysis error: $e');
       if (mounted) {
         setState(() {
           _isAnalyzingHistogram = false;
@@ -121,7 +150,6 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
     });
 
     try {
-      // 1. Check for access
       final hasAccess = await Gal.hasAccess();
       if (!hasAccess) {
         final granted = await Gal.requestAccess();
@@ -130,19 +158,15 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
         }
       }
 
-      // 2. Save to temporary file
       final directory = await getTemporaryDirectory();
       final String filePath = '${directory.path}/processed_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final File file = File(filePath);
       await file.writeAsBytes(bytes);
 
-      // 3. Save to gallery
       await Gal.putImage(filePath);
 
       if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
+        setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Image exported successfully to gallery!'),
@@ -151,13 +175,12 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
         );
       }
     } catch (e) {
+      debugPrint('Export error: $e');
       if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
+        setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Export failed: $e'),
+          const SnackBar(
+            content: Text('Could not export image.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -167,6 +190,15 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
 
   Future<void> _reprocessImage() async {
     if (_selectedImageBytes == null) return;
+
+    if (!_hasActiveProcessing) {
+      setState(() {
+        _processedImageBytes = _selectedImageBytes;
+        _isProcessing = false;
+      });
+      await _analyzeCurrentHistogram();
+      return;
+    }
 
     setState(() {
       _isProcessing = true;
@@ -190,6 +222,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
         await _analyzeCurrentHistogram();
       }
     } catch (e) {
+      debugPrint('Processing error: $e');
       if (mounted) {
         setState(() {
           _isProcessing = false;
@@ -214,35 +247,44 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
       await _reprocessImage();
     } else if (filter == 'Blur') {
       setState(() {
-        if (_selectedFilters.contains(filter)) {
-          _selectedFilters.remove(filter);
-          _blurRadius = 0;
+        if (_blurRadius > FilterDefaults.blurRadius) {
+          _blurRadius = FilterDefaults.blurRadius;
+          _selectedFilters.remove('Blur');
         } else {
-          _selectedFilters.add(filter);
-          if (_blurRadius == 0) _blurRadius = 3;
+          _blurRadius = 3.0; // Sprint requirement: set to 3 if neutral
+          _selectedFilters.add('Blur');
         }
       });
       await _reprocessImage();
-    } else if (filter == 'Brightness' || filter == 'Contrast') {
+    } else if (filter == 'Brightness') {
       setState(() {
-        if (_selectedFilters.contains(filter)) {
-          _selectedFilters.remove(filter);
+        if (_brightness != FilterDefaults.brightness) {
+          _brightness = FilterDefaults.brightness;
+          _selectedFilters.remove('Brightness');
         } else {
-          _selectedFilters.add(filter);
+          _brightness = 60.0; // Set to 60 (slight brighten) if neutral
+          _selectedFilters.add('Brightness');
         }
       });
+      await _reprocessImage();
+    } else if (filter == 'Contrast') {
+      setState(() {
+        if (_contrast != FilterDefaults.contrast) {
+          _contrast = FilterDefaults.contrast;
+          _selectedFilters.remove('Contrast');
+        } else {
+          _contrast = 1.2; // Sprint requirement: set to 1.2 if neutral
+          _selectedFilters.add('Contrast');
+        }
+      });
+      await _reprocessImage();
     } else {
+      // Other filters (visual only/not implemented)
       setState(() {
         if (_selectedFilters.contains(filter)) {
           _selectedFilters.remove(filter);
         } else {
           _selectedFilters.add(filter);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('This filter will be implemented in a later sprint.'),
-              duration: Duration(seconds: 1),
-            ),
-          );
         }
       });
     }
@@ -271,12 +313,30 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
               },
               onPreviewModeChanged: _onPreviewModeChanged,
               onFilterToggled: _onFilterToggled,
-              onBrightnessChanged: (val) => setState(() => _brightness = val),
-              onContrastChanged: (val) => setState(() => _contrast = val),
+              onBrightnessChanged: (val) {
+                setState(() {
+                  _brightness = val;
+                  if (_brightness != FilterDefaults.brightness) {
+                    _selectedFilters.add('Brightness');
+                  } else {
+                    _selectedFilters.remove('Brightness');
+                  }
+                });
+              },
+              onContrastChanged: (val) {
+                setState(() {
+                  _contrast = val;
+                  if (_contrast != FilterDefaults.contrast) {
+                    _selectedFilters.add('Contrast');
+                  } else {
+                    _selectedFilters.remove('Contrast');
+                  }
+                });
+              },
               onBlurRadiusChanged: (val) {
                 setState(() {
                   _blurRadius = val;
-                  if (_blurRadius > 0) {
+                  if (_blurRadius > FilterDefaults.blurRadius) {
                     _selectedFilters.add('Blur');
                   } else {
                     _selectedFilters.remove('Blur');
@@ -288,6 +348,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
               onBlurRadiusChangeEnd: (val) => _reprocessImage(),
               onReset: _resetImage,
               onExport: _exportImage,
+              onImagePressed: _showFullPreview,
             ),
     );
   }

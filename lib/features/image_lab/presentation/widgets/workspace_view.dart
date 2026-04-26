@@ -36,6 +36,7 @@ class WorkspaceView extends StatelessWidget {
   final ValueChanged<double>? onBlurRadiusChangeEnd;
   final VoidCallback onReset;
   final VoidCallback onExport;
+  final Function(Uint8List, String) onImagePressed;
 
   const WorkspaceView({
     super.key,
@@ -61,6 +62,7 @@ class WorkspaceView extends StatelessWidget {
     this.onBlurRadiusChangeEnd,
     required this.onReset,
     required this.onExport,
+    required this.onImagePressed,
   });
 
   @override
@@ -81,6 +83,7 @@ class WorkspaceView extends StatelessWidget {
                     processedBytes: processedImageBytes,
                     isProcessing: isProcessing,
                     mode: previewMode,
+                    onImagePressed: onImagePressed,
                   ),
                   const SizedBox(height: 16),
                   SegmentedPreviewControl(
@@ -159,7 +162,12 @@ class WorkspaceView extends StatelessWidget {
 
   Widget _buildBottomActions() {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.bottomBarPadding),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.bottomBarPadding,
+        AppSpacing.bottomBarPadding,
+        AppSpacing.bottomBarPadding,
+        AppSpacing.bottomBarPadding + 8, // Added extra bottom safe padding
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: AppShadows.bottomBarShadow,

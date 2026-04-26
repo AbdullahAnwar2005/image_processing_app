@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
+import '../../domain/filter_defaults.dart';
 import 'lab_card.dart';
 import 'feature_chip_wrap.dart';
 
@@ -95,8 +96,9 @@ class FilterControlsCard extends StatelessWidget {
           _buildSlider(
             label: 'Brightness',
             value: brightness,
-            min: -100,
-            max: 100,
+            min: FilterDefaults.brightnessMin,
+            max: FilterDefaults.brightnessMax,
+            divisions: 100,
             onChanged: onBrightnessChanged,
             onChangeEnd: onBrightnessChangeEnd,
             activeColor: AppColors.brightnessSlider,
@@ -106,8 +108,9 @@ class FilterControlsCard extends StatelessWidget {
           _buildSlider(
             label: 'Contrast',
             value: contrast,
-            min: 0,
-            max: 2,
+            min: FilterDefaults.contrastMin,
+            max: FilterDefaults.contrastMax,
+            divisions: 20,
             onChanged: onContrastChanged,
             onChangeEnd: onContrastChangeEnd,
             activeColor: AppColors.contrastSlider,
@@ -117,8 +120,9 @@ class FilterControlsCard extends StatelessWidget {
           _buildSlider(
             label: 'Blur Radius',
             value: blurRadius,
-            min: 0,
-            max: 10,
+            min: FilterDefaults.blurRadiusMin,
+            max: FilterDefaults.blurRadiusMax,
+            divisions: 8,
             onChanged: onBlurRadiusChanged,
             onChangeEnd: onBlurRadiusChangeEnd,
             activeColor: AppColors.blurSlider,
@@ -134,6 +138,7 @@ class FilterControlsCard extends StatelessWidget {
     required double value,
     required double min,
     required double max,
+    int? divisions,
     required ValueChanged<double> onChanged,
     ValueChanged<double>? onChangeEnd,
     required Color activeColor,
@@ -176,6 +181,7 @@ class FilterControlsCard extends StatelessWidget {
             value: value,
             min: min,
             max: max,
+            divisions: divisions,
             onChanged: onChanged,
             onChangeEnd: onChangeEnd,
           ),
