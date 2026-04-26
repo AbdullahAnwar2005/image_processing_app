@@ -9,15 +9,17 @@ class ImageProcessor {
       grayscale: true,
       brightness: 0,
       contrast: 1.0,
+      blurRadius: 0,
     );
   }
 
-  /// Combined processing pipeline for grayscale, brightness, and contrast.
+  /// Combined processing pipeline for grayscale, brightness, contrast, and blur.
   static Future<Uint8List> processImage({
     required Uint8List originalBytes,
     required bool grayscale,
     required double brightness,
     required double contrast,
+    required double blurRadius,
   }) async {
     // Decode the image from bytes
     final img.Image? decodedImage = img.decodeImage(originalBytes);
@@ -34,15 +36,17 @@ class ImageProcessor {
     }
 
     // 2. Apply brightness and contrast
-    // Mapping: 
-    // UI Brightness -100..100 -> adjustColor brightness -1.0..1.0
-    // UI Contrast 0..2 -> adjustColor contrast 0..2 (Neutral 1.0)
     if (brightness != 0 || contrast != 1.0) {
       processedImage = img.adjustColor(
         processedImage,
         brightness: brightness / 100.0,
         contrast: contrast,
       );
+    }
+
+    // 3. Apply Gaussian blur if requested
+    if (blurRadius > 0) {
+      processedImage = img.gaussianBlur(processedImage, radius: blurRadius.toInt());
     }
 
     // Encode the image back to JPG bytes

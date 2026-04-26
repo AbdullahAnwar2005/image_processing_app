@@ -14,11 +14,15 @@ class AppRadii {
 
   static BorderRadius get cardRadius => BorderRadius.circular(card);
   static BorderRadius get heroCardRadius => BorderRadius.circular(heroCard);
-  static BorderRadius get primaryButtonRadius => BorderRadius.circular(primaryButton);
+  static BorderRadius get primaryButtonRadius =>
+      BorderRadius.circular(primaryButton);
   static BorderRadius get iconButtonRadius => BorderRadius.circular(iconButton);
-  static BorderRadius get imagePreviewRadius => BorderRadius.circular(imagePreview);
+  static BorderRadius get imagePreviewRadius =>
+      BorderRadius.circular(imagePreview);
   static BorderRadius get chipRadius => BorderRadius.circular(chip);
-  static BorderRadius get segmentedOuterRadius => BorderRadius.circular(segmentedOuter);
-  static BorderRadius get segmentedInnerRadius => BorderRadius.circular(segmentedInner);
+  static BorderRadius get segmentedOuterRadius =>
+      BorderRadius.circular(segmentedOuter);
+  static BorderRadius get segmentedInnerRadius =>
+      BorderRadius.circular(segmentedInner);
   static BorderRadius get statRowRadius => BorderRadius.circular(statRow);
 }

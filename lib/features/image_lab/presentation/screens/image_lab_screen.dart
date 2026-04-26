@@ -83,6 +83,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
         grayscale: _selectedFilters.contains('Grayscale'),
         brightness: _brightness,
         contrast: _contrast,
+        blurRadius: _blurRadius,
       );
 
       if (mounted) {
@@ -114,8 +115,28 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
         }
       });
       await _reprocessImage();
+    } else if (filter == 'Blur') {
+      setState(() {
+        if (_selectedFilters.contains(filter)) {
+          _selectedFilters.remove(filter);
+          _blurRadius = 0;
+        } else {
+          _selectedFilters.add(filter);
+          if (_blurRadius == 0) _blurRadius = 3;
+        }
+      });
+      await _reprocessImage();
+    } else if (filter == 'Brightness' || filter == 'Contrast') {
+      // Visual toggle only for now as per Sprint 4 requirements
+      setState(() {
+        if (_selectedFilters.contains(filter)) {
+          _selectedFilters.remove(filter);
+        } else {
+          _selectedFilters.add(filter);
+        }
+      });
     } else {
-      // Other filters are not yet implemented
+      // Edge Detection not yet implemented
       setState(() {
         if (_selectedFilters.contains(filter)) {
           _selectedFilters.remove(filter);
@@ -151,9 +172,19 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
               onFilterToggled: _onFilterToggled,
               onBrightnessChanged: (val) => setState(() => _brightness = val),
               onContrastChanged: (val) => setState(() => _contrast = val),
-              onBlurRadiusChanged: (val) => setState(() => _blurRadius = val),
+              onBlurRadiusChanged: (val) {
+                setState(() {
+                  _blurRadius = val;
+                  if (_blurRadius > 0) {
+                    _selectedFilters.add('Blur');
+                  } else {
+                    _selectedFilters.remove('Blur');
+                  }
+                });
+              },
               onBrightnessChangeEnd: (val) => _reprocessImage(),
               onContrastChangeEnd: (val) => _reprocessImage(),
+              onBlurRadiusChangeEnd: (val) => _reprocessImage(),
               onReset: _resetImage,
             ),
     );
