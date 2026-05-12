@@ -112,10 +112,10 @@ flutter test test/features/image_lab/
 | ![Histogram Analysis](screenshots/histogram_analysis.jpg) | ![Edge Detection](screenshots/edge_detection.jpg) |
 | RGB/Intensity distribution graphs. | Feature extraction using Sobel/Laplacian. |
 
-| Geometry Transforms | Video Frame Extraction |
+| Geometry Transforms|
 |---|---|
-| ![Geometry Transforms](screenshots/geometry_transforms.jpg) | ![Video Frame Extraction](screenshots/video_frame_extraction.jpg) |
-| Multi-step rotation and flipping. | Extracting a still frame from video for processing. |
+| ![Geometry Transforms](screenshots/geometry_transforms.jpg)|
+| Multi-step rotation and flipping.|
 
 ## Build Release APK
 To generate an APK:
