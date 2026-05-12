@@ -107,15 +107,15 @@ flutter test test/features/image_lab/
 | ![Landing Page](screenshots/landing_page.jpg) | ![Workspace Overview](screenshots/workspace_overview.jpg) |
 | Premium entry screen. | Side-by-side comparison with active pipeline. |
 
-| Histogram Analysis | Edge Detection |
+| Color & Intensity Operations | Histogram Analysis |
 |---|---|
-| ![Histogram Analysis](screenshots/histogram_analysis.jpg) | ![Edge Detection](screenshots/edge_detection.jpg) |
-| RGB/Intensity distribution graphs. | Feature extraction using Sobel/Laplacian. |
+| ![Color & Intensity Operations](screenshots/color_intensity.jpg) | ![Histogram Analysis](screenshots/histogram_analysis.jpg) |
+| Negative, sepia, posterization, RGB adjustment, brightness, and contrast. | RGB/Intensity distribution graphs. |
 
-| Geometry Transforms|
+| Geometry Transforms | Edge Detection |
 |---|---|
-| ![Geometry Transforms](screenshots/geometry_transforms.jpg)|
-| Multi-step rotation and flipping.|
+| ![Geometry Transforms](screenshots/geometry_transforms.jpg) | ![Edge Detection](screenshots/edge_detection.jpg) |
+| Multi-step rotation, flipping, and scaling. | Feature extraction using Sobel/Laplacian. |
 
 ## Build Release APK
 To generate an APK:
