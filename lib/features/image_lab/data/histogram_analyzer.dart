@@ -6,7 +6,7 @@ import '../domain/histogram_channel.dart';
 import '../domain/histogram_data.dart';
 
 class HistogramAnalyzer {
-  /// Analyzes image bytes and returns histogram data for R, G, and B channels.
+  /// Analyzes image bytes and returns histogram data for R, G, B, and Intensity (Luminance) channels.
   static Future<Map<HistogramChannel, HistogramData>> analyze(Uint8List imageBytes) async {
     return Isolate.run(() {
       final img.Image? decodedImage = img.decodeImage(imageBytes);
@@ -21,23 +21,30 @@ class HistogramAnalyzer {
           HistogramChannel.red: HistogramData.empty(),
           HistogramChannel.green: HistogramData.empty(),
           HistogramChannel.blue: HistogramData.empty(),
+          HistogramChannel.intensity: HistogramData.empty(),
         };
       }
 
       final List<int> redBins = List<int>.filled(256, 0);
       final List<int> greenBins = List<int>.filled(256, 0);
       final List<int> blueBins = List<int>.filled(256, 0);
+      final List<int> intensityBins = List<int>.filled(256, 0);
 
       for (final pixel in decodedImage) {
         redBins[pixel.r.toInt()]++;
         greenBins[pixel.g.toInt()]++;
         blueBins[pixel.b.toInt()]++;
+        
+        // Intensity using Luminance formula: 0.299R + 0.587G + 0.114B
+        final intensity = (0.299 * pixel.r + 0.587 * pixel.g + 0.114 * pixel.b).round();
+        intensityBins[intensity.clamp(0, 255)]++;
       }
 
       return {
         HistogramChannel.red: _calculateStats(redBins, totalPixels),
         HistogramChannel.green: _calculateStats(greenBins, totalPixels),
         HistogramChannel.blue: _calculateStats(blueBins, totalPixels),
+        HistogramChannel.intensity: _calculateStats(intensityBins, totalPixels),
       };
     });
   }

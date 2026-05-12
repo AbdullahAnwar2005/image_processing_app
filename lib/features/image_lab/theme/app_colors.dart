@@ -30,10 +30,14 @@ class AppColors {
   static const Color histogramBg = Color(0xFFF0FDFA);
   static const Color histogramText = Color(0xFF0D9488);
 
+  static const Color thresholdBg = Color(0xFFFAF5FF);
+  static const Color thresholdText = Color(0xFF9333EA);
+
   // Slider colors
   static const Color brightnessSlider = Color(0xFFCA8A04);
   static const Color contrastSlider = Color(0xFF4F46E5);
   static const Color blurSlider = Color(0xFF0284C7);
+  static const Color thresholdSlider = Color(0xFF9333EA);
 
   // Histogram colors
   static const Color histogramR = Color(0xFFEF4444);

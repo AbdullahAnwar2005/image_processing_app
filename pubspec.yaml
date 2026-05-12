@@ -1,5 +1,5 @@
 name: image_processing_app
-description: "A new Flutter project."
+description: "CPIT-380 Image Filters Lab — A mobile multimedia application for manual image processing experimentations."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -39,6 +39,7 @@ dependencies:
   fl_chart: 0.70.2
   gal: ^2.3.2
   path_provider: ^2.1.5
+  video_thumbnail: ^0.5.6
 
 dev_dependencies:
   flutter_test:

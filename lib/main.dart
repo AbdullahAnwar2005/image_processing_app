@@ -25,7 +25,6 @@ class ImageFiltersLabApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: AppColors.background,
         fontFamily: null, // Use system default
-        
         // Custom button themes
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
@@ -41,7 +40,7 @@ class ImageFiltersLabApp extends StatelessWidget {
             ),
           ),
         ),
-        
+
         // Slider theme
         sliderTheme: SliderThemeData(
           trackHeight: 5,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_radii.dart';
-import '../../theme/app_shadows.dart';
-import '../../theme/app_spacing.dart';
+import 'package:image_processing_app/features/image_lab/theme/app_colors.dart';
+import 'package:image_processing_app/features/image_lab/theme/app_radii.dart';
+import 'package:image_processing_app/features/image_lab/theme/app_shadows.dart';
+import 'package:image_processing_app/features/image_lab/theme/app_spacing.dart';
 
 class HeroCard extends StatelessWidget {
   const HeroCard({super.key});
@@ -43,7 +43,7 @@ class HeroCard extends StatelessWidget {
               ),
             ),
           ),
-          
+
           Padding(
             padding: const EdgeInsets.all(AppSpacing.heroPadding),
             child: Column(
@@ -97,7 +97,10 @@ class HeroCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 _buildFeatureRow(Icons.analytics_outlined, 'Pixel statistics'),
                 const SizedBox(height: 12),
-                _buildFeatureRow(Icons.compare_arrows_rounded, 'Visual comparison'),
+                _buildFeatureRow(
+                  Icons.compare_arrows_rounded,
+                  'Visual comparison',
+                ),
               ],
             ),
           ),
@@ -116,11 +119,7 @@ class HeroCard extends StatelessWidget {
             color: Colors.white.withOpacity(0.15),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 18,
-          ),
+          child: Icon(icon, color: Colors.white, size: 18),
         ),
         const SizedBox(width: 12),
         Text(
