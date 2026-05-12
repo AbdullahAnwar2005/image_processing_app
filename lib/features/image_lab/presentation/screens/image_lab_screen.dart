@@ -8,6 +8,7 @@ import 'package:image_processing_app/features/image_lab/theme/app_colors.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/workspace_view.dart';
 import '../widgets/full_image_preview.dart';
+import '../widgets/concepts_guide_bottom_sheet.dart';
 import '../../data/image_processor.dart';
 import '../../data/histogram_analyzer.dart';
 import '../../data/media_import_service.dart';
@@ -16,6 +17,7 @@ import '../../domain/histogram_data.dart';
 import '../../domain/filter_defaults.dart';
 import '../../domain/image_filter_type.dart';
 import '../../domain/geometry_state.dart';
+import 'onboarding_screen.dart';
 
 enum PreviewMode { original, processed, compare }
 
@@ -31,6 +33,12 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
   Uint8List? _processedImageBytes;
   bool _isProcessing = false;
 
+  // Metadata
+  int _originalWidth = 0;
+  int _originalHeight = 0;
+  int _processedWidth = 0;
+  int _processedHeight = 0;
+
   // Performance Optimization
   Timer? _debounceTimer;
   int _lastProcessId = 0;
@@ -40,9 +48,9 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
   HistogramChannel _selectedHistogramChannel = HistogramChannel.intensity;
   bool _isAnalyzingHistogram = false;
   int _binCount = 32;
-
+  
   PreviewMode _previewMode = PreviewMode.compare;
-
+  
   // Point Operations State
   double _brightness = FilterDefaults.brightness;
   double _contrast = FilterDefaults.contrast;
@@ -51,15 +59,15 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
   double _redFactor = FilterDefaults.rgbFactor;
   double _greenFactor = FilterDefaults.rgbFactor;
   double _blueFactor = FilterDefaults.rgbFactor;
-
+  
   // Spatial State
   double _blurRadius = FilterDefaults.blurRadius;
   EdgeDetectorType _edgeDetectorType = EdgeDetectorType.sobel;
   SmoothingType _smoothingType = SmoothingType.gaussian;
-
+  
   // Geometric State (Stateful)
   GeometryState _geometry = const GeometryState();
-
+  
   final Set<String> _selectedFilters = {};
 
   @override
@@ -73,11 +81,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
     if (_brightness != FilterDefaults.brightness) return true;
     if (_contrast != FilterDefaults.contrast) return true;
     if (_threshold != FilterDefaults.threshold) return true;
-    if (_posterizationLevels != FilterDefaults.posterization.toInt())
-      return true;
-    if (_redFactor != FilterDefaults.rgbFactor) return true;
-    if (_greenFactor != FilterDefaults.rgbFactor) return true;
-    if (_blueFactor != FilterDefaults.rgbFactor) return true;
+    if (_selectedFilters.contains('Posterize')) return true;
     if (_blurRadius > FilterDefaults.blurRadius) return true;
     if (!_geometry.isIdentity) return true;
     return false;
@@ -91,44 +95,48 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
       }
       if (_geometry.flipHorizontal) list.add('Flip H');
       if (_geometry.flipVertical) list.add('Flip V');
-      if (_geometry.scaleFactor != 1.0)
-        list.add('${_geometry.scaleFactor}x Scale');
+      if (_geometry.scaleFactor != 1.0) list.add('${_geometry.scaleFactor}x Scale');
     }
-
+    
     for (final filter in _selectedFilters) {
       if (filter == 'Edges') {
         list.add('Edge (${_edgeDetectorType.name.toUpperCase()})');
       } else if (filter == 'Blur') {
         list.add('Blur (${_smoothingType.name.toUpperCase()})');
+      } else if (filter == 'RGB Adjustment') {
+        list.add('RGB Balancing');
       } else {
         list.add(filter);
       }
     }
-
+    
     if (_brightness != FilterDefaults.brightness) list.add('Brightness');
     if (_contrast != FilterDefaults.contrast) list.add('Contrast');
-    if (_posterizationLevels != 0) list.add('Posterize');
-    if (_redFactor != 1.0 || _greenFactor != 1.0 || _blueFactor != 1.0)
-      list.add('RGB Balancing');
-
+    
     return list;
   }
 
   Future<void> _handleImport(bool isVideo) async {
     setState(() => _isProcessing = true);
     try {
-      final bytes = isVideo
+      final bytes = isVideo 
           ? await MediaImportService.extractFrameFromVideo()
           : await MediaImportService.pickImage();
-
+      
       if (bytes == null) {
         setState(() => _isProcessing = false);
         return;
       }
 
+      final dims = await ImageProcessor.getDimensions(bytes);
+
       setState(() {
         _selectedImageBytes = bytes;
         _processedImageBytes = bytes;
+        _originalWidth = dims.$1;
+        _originalHeight = dims.$2;
+        _processedWidth = dims.$1;
+        _processedHeight = dims.$2;
         _isProcessing = false;
         _resetParams();
       });
@@ -136,11 +144,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              isVideo
-                  ? 'Video frame extracted successfully.'
-                  : 'Image imported successfully.',
-            ),
+            content: Text(isVideo ? 'Video frame extracted successfully.' : 'Image imported successfully.'),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
           ),
@@ -153,11 +157,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
         setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              isVideo
-                  ? 'Could not extract frame from video.'
-                  : 'Could not import image.',
-            ),
+            content: Text(isVideo ? 'Could not extract frame from video.' : 'Could not import image.'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -185,6 +185,10 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
     setState(() {
       _selectedImageBytes = null;
       _processedImageBytes = null;
+      _originalWidth = 0;
+      _originalHeight = 0;
+      _processedWidth = 0;
+      _processedHeight = 0;
       _isProcessing = false;
       _histogramByChannel = null;
       _resetParams();
@@ -216,25 +220,19 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
       final hasAccess = await Gal.hasAccess();
       if (!hasAccess) await Gal.requestAccess();
       final directory = await getTemporaryDirectory();
-      final String filePath =
-          '${directory.path}/processed_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final String filePath = '${directory.path}/processed_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final File file = File(filePath);
       await file.writeAsBytes(bytes);
       await Gal.putImage(filePath);
       if (mounted) {
         setState(() => _isProcessing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Exported successfully to gallery!')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Exported successfully to gallery!')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to export image. Check permissions.'),
-            backgroundColor: Colors.red,
-          ),
+          const SnackBar(content: Text('Failed to export image. Check permissions.'), backgroundColor: Colors.red),
         );
       }
     }
@@ -247,26 +245,29 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
 
   Future<void> _reprocessImage() async {
     if (_selectedImageBytes == null) return;
-
+    
     final currentId = ++_lastProcessId;
-
+    
     if (!_hasActiveProcessing) {
       setState(() {
         _processedImageBytes = _selectedImageBytes;
+        _processedWidth = _originalWidth;
+        _processedHeight = _originalHeight;
         _isProcessing = false;
       });
       await _analyzeCurrentHistogram();
       return;
     }
-
+    
     setState(() => _isProcessing = true);
     try {
-      final processed = await ImageProcessor.processImage(
+      final result = await ImageProcessor.processImage(
         originalBytes: _selectedImageBytes!,
         grayscale: _selectedFilters.contains('Grayscale'),
         negative: _selectedFilters.contains('Negative'),
         sepia: _selectedFilters.contains('Sepia'),
-        posterizationLevels: _posterizationLevels,
+        rgbAdjustment: _selectedFilters.contains('RGB Adjustment'),
+        posterizationLevels: _selectedFilters.contains('Posterize') ? _posterizationLevels : 0,
         redFactor: _redFactor,
         greenFactor: _greenFactor,
         blueFactor: _blueFactor,
@@ -281,10 +282,12 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
         equalization: _selectedFilters.contains('Equalization'),
         geometry: _geometry,
       );
-
+      
       if (mounted && currentId == _lastProcessId) {
         setState(() {
-          _processedImageBytes = processed;
+          _processedImageBytes = result.bytes;
+          _processedWidth = result.width;
+          _processedHeight = result.height;
           _isProcessing = false;
         });
         await _analyzeCurrentHistogram();
@@ -293,12 +296,7 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
       if (mounted && currentId == _lastProcessId) {
         setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Processing error. Image may be too large or corrupted.',
-            ),
-            backgroundColor: Colors.red,
-          ),
+          const SnackBar(content: Text('Processing error. Image may be too large or corrupted.'), backgroundColor: Colors.red),
         );
       }
     }
@@ -316,25 +314,85 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
   }
 
   void _showAbout() {
-    showAboutDialog(
+    showModalBottomSheet(
       context: context,
-      applicationName: 'Image Filters Lab',
-      applicationVersion: '1.0.0',
-
-      // applicationIcon: const Icon(Icons.auto_awesome, size: 40, color: AppColors.primary), ///Todo: put the original luncher icon for the app that you'll design
-      children: [
-        const SizedBox(height: 12),
-        const Text(
-          'This mobile application demonstrates manual image processing algorithms including point operations, spatial filtering, histogram equalization, and geometric transformations.',
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        const SizedBox(height: 8),
-        const Text(
-          '• Video Support: Extracts one frame for processing.\n'
-          '• Optimization: Resizes large images for performance.\n'
-          '• Non-destructive: Original image remains preserved.',
-          style: TextStyle(fontSize: 12, height: 1.5),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Text(
+              'Image Filters Lab',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'A Flutter mobile multimedia application built for CPIT-380 Multimedia Technologies.',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'This app helps students explore image processing concepts through interactive, pixel-level operations including color manipulation, histogram analysis, spatial filtering, edge detection, and geometric transformations.',
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+            ),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Row(
+              children: [
+                Icon(Icons.terminal_rounded, size: 16, color: AppColors.textSecondary),
+                SizedBox(width: 8),
+                Text('Version 1.0.0', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                Spacer(),
+                Text('Built with Flutter & Dart', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  ConceptsGuideBottomSheet.show(context);
+                },
+                icon: const Icon(Icons.help_outline),
+                label: const Text('Concepts Guide'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: const BorderSide(color: AppColors.primary),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -342,25 +400,17 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: _selectedImageBytes != null
-          ? AppBar(
-              title: const Text(
-                'Workspace',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              backgroundColor: Colors.white,
-              elevation: 0,
-              actions: [
-                IconButton(
-                  icon: const Icon(
-                    Icons.info_outline,
-                    color: AppColors.primary,
-                  ),
-                  onPressed: _showAbout,
-                ),
-              ],
-            )
-          : null,
+      appBar: _selectedImageBytes != null ? AppBar(
+        title: const Text('Workspace', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline, color: AppColors.primary),
+            onPressed: () => ConceptsGuideBottomSheet.show(context),
+          ),
+        ],
+      ) : null,
       body: _selectedImageBytes == null
           ? EmptyStateView(
               onPickImage: () => _handleImport(false),
@@ -372,6 +422,10 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
               processedImageBytes: _processedImageBytes ?? _selectedImageBytes!,
               isProcessing: _isProcessing,
               previewMode: _previewMode,
+              originalWidth: _originalWidth,
+              originalHeight: _originalHeight,
+              processedWidth: _processedWidth,
+              processedHeight: _processedHeight,
               brightness: _brightness,
               contrast: _contrast,
               blurRadius: _blurRadius,
@@ -389,81 +443,29 @@ class _ImageLabScreenState extends State<ImageLabScreen> {
               histogramByChannel: _histogramByChannel,
               selectedHistogramChannel: _selectedHistogramChannel,
               isAnalyzingHistogram: _isAnalyzingHistogram,
-              onHistogramChannelChanged: (c) =>
-                  setState(() => _selectedHistogramChannel = c),
+              onHistogramChannelChanged: (c) => setState(() => _selectedHistogramChannel = c),
               onBinCountChanged: (b) => setState(() => _binCount = b),
               onPreviewModeChanged: (m) => setState(() => _previewMode = m),
               onFilterToggled: _onFilterToggled,
-              onEdgeTypeChanged: (t) {
-                setState(() => _edgeDetectorType = t);
-                _reprocessImage();
-              },
-              onSmoothingTypeChanged: (t) {
-                setState(() => _smoothingType = t);
-                _reprocessImage();
-              },
-              onBrightnessChanged: (v) {
-                setState(() => _brightness = v);
-                _triggerReprocessDebounced();
-              },
-              onContrastChanged: (v) {
-                setState(() => _contrast = v);
-                _triggerReprocessDebounced();
-              },
-              onBlurRadiusChanged: (v) {
-                setState(() => _blurRadius = v);
-                _triggerReprocessDebounced();
-              },
-              onThresholdChanged: (v) {
-                setState(() => _threshold = v);
-                _triggerReprocessDebounced();
-              },
-              onPosterizationChanged: (v) {
-                setState(() => _posterizationLevels = v);
-                _reprocessImage();
-              },
-              onRedFactorChanged: (v) {
-                setState(() => _redFactor = v);
-                _triggerReprocessDebounced();
-              },
-              onGreenFactorChanged: (v) {
-                setState(() => _greenFactor = v);
-                _triggerReprocessDebounced();
-              },
-              onBlueFactorChanged: (v) {
-                setState(() => _blueFactor = v);
-                _triggerReprocessDebounced();
-              },
-              onRotateRight: () {
-                setState(() => _geometry = _geometry.rotateRight());
-                _reprocessImage();
-              },
-              onRotateLeft: () {
-                setState(() => _geometry = _geometry.rotateLeft());
-                _reprocessImage();
-              },
-              onToggleFlipH: () {
-                setState(() => _geometry = _geometry.toggleFlipHorizontal());
-                _reprocessImage();
-              },
-              onToggleFlipV: () {
-                setState(() => _geometry = _geometry.toggleFlipVertical());
-                _reprocessImage();
-              },
-              onScaleFactorChanged: (s) {
-                setState(() => _geometry = _geometry.copyWith(scaleFactor: s));
-                _reprocessImage();
-              },
+              onEdgeTypeChanged: (t) { setState(() => _edgeDetectorType = t); _reprocessImage(); },
+              onSmoothingTypeChanged: (t) { setState(() => _smoothingType = t); _reprocessImage(); },
+              onBrightnessChanged: (v) { setState(() => _brightness = v); _triggerReprocessDebounced(); },
+              onContrastChanged: (v) { setState(() => _contrast = v); _triggerReprocessDebounced(); },
+              onBlurRadiusChanged: (v) { setState(() => _blurRadius = v); _triggerReprocessDebounced(); },
+              onThresholdChanged: (v) { setState(() => _threshold = v); _triggerReprocessDebounced(); },
+              onPosterizationChanged: (v) { setState(() => _posterizationLevels = v); _reprocessImage(); },
+              onRedFactorChanged: (v) { setState(() => _redFactor = v); _triggerReprocessDebounced(); },
+              onGreenFactorChanged: (v) { setState(() => _greenFactor = v); _triggerReprocessDebounced(); },
+              onBlueFactorChanged: (v) { setState(() => _blueFactor = v); _triggerReprocessDebounced(); },
+              onRotateRight: () { setState(() => _geometry = _geometry.rotateRight()); _reprocessImage(); },
+              onRotateLeft: () { setState(() => _geometry = _geometry.rotateLeft()); _reprocessImage(); },
+              onToggleFlipH: () { setState(() => _geometry = _geometry.toggleFlipHorizontal()); _reprocessImage(); },
+              onToggleFlipV: () { setState(() => _geometry = _geometry.toggleFlipVertical()); _reprocessImage(); },
+              onScaleFactorChanged: (s) { setState(() => _geometry = _geometry.copyWith(scaleFactor: s)); _reprocessImage(); },
               onProcessingEnd: _reprocessImage,
               onReset: _resetImage,
               onExport: _exportImage,
-              onImagePressed: (b, t) => Navigator.of(context).push(
-                PageRouteBuilder(
-                  opaque: false,
-                  pageBuilder: (_, __, ___) =>
-                      FullImagePreview(imageBytes: b, heroTag: t),
-                ),
-              ),
+              onImagePressed: (b, t) => Navigator.of(context).push(PageRouteBuilder(opaque: false, pageBuilder: (_, __, ___) => FullImagePreview(imageBytes: b, heroTag: t))),
             ),
     );
   }

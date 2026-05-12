@@ -5,15 +5,29 @@ import '../domain/image_filter_type.dart';
 import '../domain/geometry_state.dart';
 import 'image_algorithms.dart';
 
+/// Result object for the processing pipeline including metadata
+class ImageProcessResult {
+  final Uint8List bytes;
+  final int width;
+  final int height;
+
+  ImageProcessResult({
+    required this.bytes,
+    required this.width,
+    required this.height,
+  });
+}
+
 class ImageProcessor {
   static const int maxProcessingDimension = 1600;
 
-  /// Combined processing pipeline for Phase 8: Multimedia Expansion with Stateful Geometry
-  static Future<Uint8List> processImage({
+  /// Combined processing pipeline for Phase 10: Product Corrections
+  static Future<ImageProcessResult> processImage({
     required Uint8List originalBytes,
     required bool grayscale,
     required bool negative,
     required bool sepia,
+    required bool rgbAdjustment, // New: Independent toggle
     required int posterizationLevels,
     required double redFactor,
     required double greenFactor,
@@ -58,7 +72,9 @@ class ImageProcessor {
       if (posterizationLevels > 0) {
         processedImage = ImageAlgorithms.applyPosterization(processedImage, posterizationLevels);
       }
-      if (redFactor != 1.0 || greenFactor != 1.0 || blueFactor != 1.0) {
+      
+      // RGB Adjustment is now independent from posterization
+      if (rgbAdjustment && (redFactor != 1.0 || greenFactor != 1.0 || blueFactor != 1.0)) {
         processedImage = ImageAlgorithms.applyRgbAdjustment(processedImage, redFactor, greenFactor, blueFactor);
       }
       
@@ -82,7 +98,12 @@ class ImageProcessor {
         processedImage = ImageAlgorithms.applyThreshold(processedImage, threshold);
       }
 
-      return _encodeJpg(processedImage);
+      final encoded = _encodeJpg(processedImage);
+      return ImageProcessResult(
+        bytes: encoded,
+        width: processedImage.width,
+        height: processedImage.height,
+      );
     });
   }
 
@@ -114,5 +135,14 @@ class ImageProcessor {
   static Uint8List _encodeJpg(img.Image image) {
     final List<int> encoded = img.encodeJpg(image, quality: 95);
     return Uint8List.fromList(encoded);
+  }
+
+  /// Utility to get dimensions without full processing
+  static Future<(int, int)> getDimensions(Uint8List bytes) async {
+    return Isolate.run(() {
+      final img.Image? decoded = img.decodeImage(bytes);
+      if (decoded == null) return (0, 0);
+      return (decoded.width, decoded.height);
+    });
   }
 }

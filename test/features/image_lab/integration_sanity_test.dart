@@ -10,15 +10,16 @@ void main() {
     // 1. Create a 10x10 test image
     final image = img.Image(width: 10, height: 10);
     for (final p in image) p.setRgb(0, 0, 0);
-    image.setPixelRgb(5, 5, 255, 255, 255);
+    image.getPixel(5, 5).setRgb(255, 255, 255);
     final originalBytes = Uint8List.fromList(img.encodeJpg(image));
 
     // 2. Run through processor
-    final processedBytes = await ImageProcessor.processImage(
+    final result = await ImageProcessor.processImage(
       originalBytes: originalBytes,
       grayscale: false,
       negative: false,
       sepia: false,
+      rgbAdjustment: false,
       posterizationLevels: 0,
       redFactor: 1.0,
       greenFactor: 1.0,
@@ -36,7 +37,7 @@ void main() {
     );
 
     // 3. Verify
-    expect(processedBytes.length, greaterThan(0));
-    expect(processedBytes, isNot(originalBytes));
+    expect(result.bytes.length, greaterThan(0));
+    expect(result.bytes, isNot(originalBytes));
   });
 }

@@ -12,6 +12,12 @@ class ImageComparisonCard extends StatelessWidget {
   final bool isProcessing;
   final Function(Uint8List, String) onImagePressed;
 
+  // New: Dimensions
+  final int originalWidth;
+  final int originalHeight;
+  final int processedWidth;
+  final int processedHeight;
+
   const ImageComparisonCard({
     super.key,
     required this.originalBytes,
@@ -19,6 +25,10 @@ class ImageComparisonCard extends StatelessWidget {
     required this.mode,
     this.isProcessing = false,
     required this.onImagePressed,
+    required this.originalWidth,
+    required this.originalHeight,
+    required this.processedWidth,
+    required this.processedHeight,
   });
 
   @override
@@ -147,17 +157,26 @@ class ImageComparisonCard extends StatelessWidget {
   }
 
   Widget _buildMetricsRow() {
+    String dimensionText;
+    if (mode == PreviewMode.compare) {
+      dimensionText = 'Org: ${originalWidth}x${originalHeight} • Proc: ${processedWidth}x${processedHeight}';
+    } else if (mode == PreviewMode.original) {
+      dimensionText = '${originalWidth}x$originalHeight';
+    } else {
+      dimensionText = '${processedWidth}x$processedHeight';
+    }
+
     return Container(
       padding: const EdgeInsets.only(top: 12),
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.divider)),
       ),
-      child: const Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _Metric(label: 'FORMAT', value: 'JPG/PNG'),
-          _Metric(label: 'QUALITY', value: 'HD'),
-          _Metric(label: 'MODE', value: 'RGB'),
+          const _Metric(label: 'FORMAT', value: 'JPG/PNG'),
+          _Metric(label: 'DIMENSIONS', value: dimensionText),
+          const _Metric(label: 'MODE', value: 'RGB'),
         ],
       ),
     );
@@ -178,7 +197,7 @@ class _Metric extends StatelessWidget {
           value,
           style: const TextStyle(
             color: AppColors.textSecondary,
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w800,
           ),
         ),

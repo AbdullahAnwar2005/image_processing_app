@@ -4,115 +4,89 @@ import '../../theme/app_colors.dart';
 class FeatureChipWrap extends StatelessWidget {
   final Set<String> selectedFilters;
   final Function(String)? onFilterToggled;
+  final List<FeatureOption> options;
 
   const FeatureChipWrap({
     super.key,
-    this.selectedFilters = const {},
+    required this.selectedFilters,
     this.onFilterToggled,
+    required this.options,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        _buildFilterChip('Grayscale', Icons.hdr_strong),
-        _buildFilterChip('Negative', Icons.invert_colors),
-        _buildFilterChip('Sepia', Icons.photo_filter),
-        _buildFilterChip('Equalization', Icons.equalizer),
-        _buildFilterChip('Blur', Icons.blur_on),
-        _buildFilterChip('Edges', Icons.filter_center_focus),
-        _buildFilterChip('Threshold', Icons.wb_iridescent),
-      ],
-    );
-  }
-
-  Widget _buildFilterChip(String label, IconData icon) {
-    final bool isSelected = selectedFilters.contains(label);
-    
-    Color backgroundColor;
-    Color iconColor;
-    Color textColor;
-
-    if (isSelected) {
-      switch (label) {
-        case 'Grayscale':
-          backgroundColor = AppColors.grayscaleBg;
-          break;
-        case 'Blur':
-          backgroundColor = AppColors.blurBg;
-          break;
-        case 'Edges':
-          backgroundColor = AppColors.edgesBg;
-          break;
-        case 'Threshold':
-          backgroundColor = AppColors.thresholdBg;
-          break;
-        case 'Equalization':
-        case 'Negative':
-        case 'Sepia':
-          backgroundColor = AppColors.primary;
-          break;
-        default:
-          backgroundColor = AppColors.primary;
+    // Two-column grid layout using Rows and Columns to ensure equal width
+    final List<Widget> rows = [];
+    for (int i = 0; i < options.length; i += 2) {
+      rows.add(
+        Row(
+          children: [
+            Expanded(child: _buildItem(options[i])),
+            const SizedBox(width: 8),
+            Expanded(
+              child: (i + 1 < options.length) 
+                  ? _buildItem(options[i + 1]) 
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      );
+      if (i + 2 < options.length) {
+        rows.add(const SizedBox(height: 8));
       }
-      iconColor = isSelected && (label == 'Equalization' || label == 'Negative' || label == 'Sepia') ? Colors.white : _getTextColor(label);
-      textColor = isSelected && (label == 'Equalization' || label == 'Negative' || label == 'Sepia') ? Colors.white : _getTextColor(label);
-    } else {
-      backgroundColor = AppColors.surfaceAlt;
-      iconColor = AppColors.textSecondary;
-      textColor = AppColors.textSecondary;
     }
 
-    return FilterChip(
-      label: Text(
-        label,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 12,
-          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+    return Column(children: rows);
+  }
+
+  Widget _buildItem(FeatureOption option) {
+    final bool isSelected = selectedFilters.contains(option.label);
+    
+    return InkWell(
+      onTap: onFilterToggled != null ? () => onFilterToggled!(option.label) : null,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withOpacity(0.08) : AppColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.primary.withOpacity(0.4) : AppColors.divider,
+            width: 1.5,
+          ),
         ),
-      ),
-      avatar: Icon(
-        icon,
-        size: 14,
-        color: iconColor,
-      ),
-      selected: isSelected,
-      onSelected: onFilterToggled != null ? (_) => onFilterToggled!(label) : null,
-      backgroundColor: backgroundColor,
-      selectedColor: backgroundColor,
-      checkmarkColor: textColor,
-      showCheckmark: false,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(100),
-        side: BorderSide(
-          color: isSelected ? _getTextColor(label).withOpacity(0.3) : AppColors.divider,
-          width: 1,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              option.icon,
+              size: 16,
+              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                option.label,
+                style: TextStyle(
+                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
 
-  Color _getTextColor(String label) {
-    switch (label) {
-      case 'Grayscale':
-        return AppColors.grayscaleText;
-      case 'Blur':
-        return AppColors.blurText;
-      case 'Edges':
-        return AppColors.edgesText;
-      case 'Threshold':
-        return AppColors.thresholdText;
-      case 'Equalization':
-      case 'Negative':
-      case 'Sepia':
-        return Colors.white;
-      default:
-        return AppColors.primary;
-    }
-  }
+class FeatureOption {
+  final String label;
+  final IconData icon;
+
+  const FeatureOption(this.label, this.icon);
 }
