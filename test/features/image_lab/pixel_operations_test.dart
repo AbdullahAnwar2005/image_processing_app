@@ -30,8 +30,8 @@ void main() {
       final image = img.Image(width: 1, height: 1);
       image.setPixelRgb(0, 0, 100, 120, 140);
 
-      // brightness = 55 (default is 50), so offset = (55-50)*4 = 20
-      ImageAlgorithms.applyBrightnessContrast(image, 55, 1.0);
+      // brightness = 10 (default is 0), so offset = 10 * 2.0 = 20
+      ImageAlgorithms.applyBrightnessContrast(image, 10, 1.0);
       
       final pixel = image.getPixel(0, 0);
       expect(pixel.r, 120);
@@ -43,8 +43,8 @@ void main() {
       final image = img.Image(width: 1, height: 1);
       image.setPixelRgb(0, 0, 138, 138, 138);
 
-      // contrast factor = 2.0
-      ImageAlgorithms.applyBrightnessContrast(image, 50, 2.0);
+      // contrast factor = 2.0, brightness = 0 (neutral)
+      ImageAlgorithms.applyBrightnessContrast(image, 0, 2.0);
       
       final pixel = image.getPixel(0, 0);
       // (138 - 128) * 2 + 128 = 10 * 2 + 128 = 148

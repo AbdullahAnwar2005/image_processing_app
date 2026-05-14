@@ -55,6 +55,15 @@ class WorkspaceView extends StatefulWidget {
   final HistogramChannel selectedHistogramChannel;
   final bool isAnalyzingHistogram;
   
+  final VoidCallback onResetBrightness;
+  final VoidCallback onResetContrast;
+  final VoidCallback onResetRGB;
+  final VoidCallback onResetBlur;
+  final VoidCallback onResetThreshold;
+  final VoidCallback onResetPosterization;
+  final VoidCallback onResetGeometry;
+  final VoidCallback onResetHistogram;
+
   // Callbacks
   final Function(HistogramChannel) onHistogramChannelChanged;
   final Function(int) onBinCountChanged;
@@ -70,16 +79,16 @@ class WorkspaceView extends StatefulWidget {
   final ValueChanged<double> onRedFactorChanged;
   final ValueChanged<double> onGreenFactorChanged;
   final ValueChanged<double> onBlueFactorChanged;
-  
+
   // Geometry Callbacks
   final VoidCallback onRotateRight;
   final VoidCallback onRotateLeft;
   final VoidCallback onToggleFlipH;
   final VoidCallback onToggleFlipV;
   final ValueChanged<double> onScaleFactorChanged;
-  
+
   final VoidCallback onProcessingEnd;
-  
+
   final VoidCallback onReset;
   final VoidCallback onExport;
   final Function(Uint8List, String) onImagePressed;
@@ -131,6 +140,14 @@ class WorkspaceView extends StatefulWidget {
     required this.onToggleFlipV,
     required this.onScaleFactorChanged,
     required this.onProcessingEnd,
+    required this.onResetBrightness,
+    required this.onResetContrast,
+    required this.onResetRGB,
+    required this.onResetBlur,
+    required this.onResetThreshold,
+    required this.onResetPosterization,
+    required this.onResetGeometry,
+    required this.onResetHistogram,
     required this.onReset,
     required this.onExport,
     required this.onImagePressed,
@@ -331,6 +348,7 @@ class _WorkspaceViewState extends State<WorkspaceView> {
       onToggleFlipH: widget.onToggleFlipH,
       onToggleFlipV: widget.onToggleFlipV,
       onScaleFactorChanged: widget.onScaleFactorChanged,
+      onResetGeometry: widget.onResetGeometry,
       onProcessingEnd: widget.onProcessingEnd,
     );
   }
@@ -351,6 +369,10 @@ class _WorkspaceViewState extends State<WorkspaceView> {
       onRedFactorChanged: widget.onRedFactorChanged,
       onGreenFactorChanged: widget.onGreenFactorChanged,
       onBlueFactorChanged: widget.onBlueFactorChanged,
+      onResetBrightness: widget.onResetBrightness,
+      onResetContrast: widget.onResetContrast,
+      onResetRGB: widget.onResetRGB,
+      onResetPosterization: widget.onResetPosterization,
       onProcessingEnd: widget.onProcessingEnd,
     );
   }
@@ -363,6 +385,7 @@ class _WorkspaceViewState extends State<WorkspaceView> {
       smoothingType: widget.smoothingType,
       onBlurRadiusChanged: widget.onBlurRadiusChanged,
       onSmoothingTypeChanged: widget.onSmoothingTypeChanged,
+      onResetBlur: widget.onResetBlur,
       onProcessingEnd: widget.onProcessingEnd,
     );
   }
@@ -375,6 +398,7 @@ class _WorkspaceViewState extends State<WorkspaceView> {
       threshold: widget.threshold,
       onEdgeTypeChanged: widget.onEdgeTypeChanged,
       onThresholdChanged: widget.onThresholdChanged,
+      onResetThreshold: widget.onResetThreshold,
       onProcessingEnd: widget.onProcessingEnd,
     );
   }
@@ -387,6 +411,7 @@ class _WorkspaceViewState extends State<WorkspaceView> {
       isLoading: widget.isAnalyzingHistogram,
       binCount: widget.binCount,
       onBinCountChanged: widget.onBinCountChanged,
+      onResetHistogram: widget.onResetHistogram,
     );
   }
 

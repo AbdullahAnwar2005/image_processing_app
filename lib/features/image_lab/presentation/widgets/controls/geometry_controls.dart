@@ -11,6 +11,7 @@ class GeometryControls extends StatelessWidget {
   final VoidCallback onToggleFlipH;
   final VoidCallback onToggleFlipV;
   final ValueChanged<double> onScaleFactorChanged;
+  final VoidCallback onResetGeometry;
   final VoidCallback? onProcessingEnd;
 
   const GeometryControls({
@@ -21,6 +22,7 @@ class GeometryControls extends StatelessWidget {
     required this.onToggleFlipH,
     required this.onToggleFlipV,
     required this.onScaleFactorChanged,
+    required this.onResetGeometry,
     this.onProcessingEnd,
   });
 
@@ -31,6 +33,26 @@ class GeometryControls extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'TRANSFORMS',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+              ),
+              if (!geometry.isIdentity)
+                TextButton(
+                  onPressed: onResetGeometry,
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Reset Geometry', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
           Row(
             children: [
               _buildActionIconButton(
@@ -65,10 +87,12 @@ class GeometryControls extends StatelessWidget {
           _buildSlider(
             label: 'Scale Factor',
             value: geometry.scaleFactor,
+            defaultValue: FilterDefaults.scale,
             min: FilterDefaults.scaleMin,
             max: FilterDefaults.scaleMax,
             divisions: 6,
             onChanged: onScaleFactorChanged,
+            onReset: onResetGeometry,
             onChangeEnd: (_) => onProcessingEnd?.call(),
             activeColor: Colors.deepPurple,
             displayValue: '${geometry.scaleFactor.toStringAsFixed(1)}x',
@@ -127,15 +151,19 @@ class GeometryControls extends StatelessWidget {
   Widget _buildSlider({
     required String label,
     required double value,
+    required double defaultValue,
     required double min,
     required double max,
     int? divisions,
     required ValueChanged<double> onChanged,
+    required VoidCallback onReset,
     ValueChanged<double>? onChangeEnd,
     required Color activeColor,
     required String displayValue,
     required String note,
   }) {
+    final bool isModified = value != defaultValue;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -159,6 +187,24 @@ class GeometryControls extends StatelessWidget {
               displayValue,
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: activeColor),
             ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Default: ${defaultValue.toStringAsFixed(1)}x',
+              style: const TextStyle(fontSize: 10, color: AppColors.textMuted, fontWeight: FontWeight.w500),
+            ),
+            if (isModified)
+              GestureDetector(
+                onTap: onReset,
+                child: const Text(
+                  'Reset',
+                  style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold),
+                ),
+              ),
           ],
         ),
         SliderTheme(

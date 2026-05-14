@@ -12,6 +12,7 @@ class SpatialFilterControls extends StatelessWidget {
   final SmoothingType smoothingType;
   final ValueChanged<double> onBlurRadiusChanged;
   final Function(SmoothingType) onSmoothingTypeChanged;
+  final VoidCallback onResetBlur;
   final VoidCallback? onProcessingEnd;
 
   const SpatialFilterControls({
@@ -22,6 +23,7 @@ class SpatialFilterControls extends StatelessWidget {
     required this.smoothingType,
     required this.onBlurRadiusChanged,
     required this.onSmoothingTypeChanged,
+    required this.onResetBlur,
     this.onProcessingEnd,
   });
 
@@ -43,10 +45,12 @@ class SpatialFilterControls extends StatelessWidget {
             _buildSlider(
               label: 'Smoothing Strength',
               value: blurRadius,
+              defaultValue: FilterDefaults.blurRadius,
               min: FilterDefaults.blurRadiusMin,
               max: FilterDefaults.blurRadiusMax,
               divisions: 8,
               onChanged: onBlurRadiusChanged,
+              onReset: onResetBlur,
               onChangeEnd: (_) => onProcessingEnd?.call(),
               activeColor: AppColors.blurSlider,
               displayValue: blurRadius.toInt().toString(),
@@ -109,15 +113,19 @@ class SpatialFilterControls extends StatelessWidget {
   Widget _buildSlider({
     required String label,
     required double value,
+    required double defaultValue,
     required double min,
     required double max,
     int? divisions,
     required ValueChanged<double> onChanged,
+    required VoidCallback onReset,
     ValueChanged<double>? onChangeEnd,
     required Color activeColor,
     required String displayValue,
     required String note,
   }) {
+    final bool isModified = value != defaultValue;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -132,6 +140,24 @@ class SpatialFilterControls extends StatelessWidget {
               ],
             ),
             Text(displayValue, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: activeColor)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Default: ${defaultValue.toInt()}',
+              style: const TextStyle(fontSize: 10, color: AppColors.textMuted, fontWeight: FontWeight.w500),
+            ),
+            if (isModified)
+              GestureDetector(
+                onTap: onReset,
+                child: const Text(
+                  'Reset',
+                  style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold),
+                ),
+              ),
           ],
         ),
         SliderTheme(

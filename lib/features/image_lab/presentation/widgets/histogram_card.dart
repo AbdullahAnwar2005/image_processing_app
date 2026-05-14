@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../domain/histogram_channel.dart';
 import '../../domain/histogram_data.dart';
+import '../../domain/filter_defaults.dart';
 import 'lab_card.dart';
 
 class HistogramCard extends StatelessWidget {
@@ -12,6 +13,7 @@ class HistogramCard extends StatelessWidget {
   final bool isLoading;
   final int binCount;
   final Function(int) onBinCountChanged;
+  final VoidCallback onResetHistogram;
 
   const HistogramCard({
     super.key,
@@ -21,6 +23,7 @@ class HistogramCard extends StatelessWidget {
     required this.isLoading,
     required this.binCount,
     required this.onBinCountChanged,
+    required this.onResetHistogram,
   });
 
   @override
@@ -35,24 +38,25 @@ class HistogramCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Intensity Histogram',
+                    const Text(
+                      'Histogram Analysis',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
                         color: AppColors.textPrimary,
+                        letterSpacing: -0.5,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      'Frequency of pixel intensities (0-255)',
-                      style: TextStyle(
+                      'X: ${_getXAxisLabel()} · Y: pixel count',
+                      style: const TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
                       ),
                     ),
@@ -77,13 +81,15 @@ class HistogramCard extends StatelessWidget {
           _buildChannelSelector(),
           const SizedBox(height: 16),
           _buildBinSelector(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           SizedBox(
-            height: 140,
+            height: 160,
             child: currentData == null || currentData.totalPixels == 0
                 ? _buildEmptyState()
                 : _buildChart(currentData),
           ),
+          const SizedBox(height: 8),
+          _buildGradientAxis(),
           const SizedBox(height: 20),
           _buildEducationalNote(),
           const SizedBox(height: 16),
@@ -96,6 +102,19 @@ class HistogramCard extends StatelessWidget {
     );
   }
 
+  String _getXAxisLabel() {
+    switch (selectedChannel) {
+      case HistogramChannel.intensity:
+        return 'Intensity value (0–255)';
+      case HistogramChannel.red:
+        return 'Red channel value (0–255)';
+      case HistogramChannel.green:
+        return 'Green channel value (0–255)';
+      case HistogramChannel.blue:
+        return 'Blue channel value (0–255)';
+    }
+  }
+
   Widget _buildChannelSelector() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -103,18 +122,34 @@ class HistogramCard extends StatelessWidget {
         children: HistogramChannel.values.map((channel) {
           final isSelected = channel == selectedChannel;
           Color channelColor;
+          Color textColor;
+          Color bgColor;
+          Color borderColor;
+
           switch (channel) {
             case HistogramChannel.red:
-              channelColor = Colors.red.shade400;
+              channelColor = Colors.red.shade600;
+              textColor = isSelected ? channelColor : AppColors.textSecondary;
+              bgColor = isSelected ? channelColor.withOpacity(0.1) : Colors.transparent;
+              borderColor = isSelected ? channelColor : AppColors.divider;
               break;
             case HistogramChannel.green:
-              channelColor = Colors.green.shade400;
+              channelColor = Colors.green.shade600;
+              textColor = isSelected ? channelColor : AppColors.textSecondary;
+              bgColor = isSelected ? channelColor.withOpacity(0.1) : Colors.transparent;
+              borderColor = isSelected ? channelColor : AppColors.divider;
               break;
             case HistogramChannel.blue:
-              channelColor = Colors.blue.shade400;
+              channelColor = Colors.blue.shade600;
+              textColor = isSelected ? channelColor : AppColors.textSecondary;
+              bgColor = isSelected ? channelColor.withOpacity(0.1) : Colors.transparent;
+              borderColor = isSelected ? channelColor : AppColors.divider;
               break;
             case HistogramChannel.intensity:
-              channelColor = Colors.grey.shade700;
+              channelColor = Colors.grey.shade800;
+              textColor = isSelected ? channelColor : AppColors.textSecondary;
+              bgColor = isSelected ? Colors.grey.shade200 : Colors.transparent;
+              borderColor = isSelected ? Colors.grey.shade400 : AppColors.divider;
               break;
           }
 
@@ -126,9 +161,9 @@ class HistogramCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: isSelected ? channelColor.withOpacity(0.1) : Colors.transparent,
+                  color: bgColor,
                   border: Border.all(
-                    color: isSelected ? channelColor : AppColors.divider,
+                    color: borderColor,
                     width: 1.5,
                   ),
                   borderRadius: BorderRadius.circular(8),
@@ -137,8 +172,8 @@ class HistogramCard extends StatelessWidget {
                   channel.label,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: isSelected ? channelColor : AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
+                    color: textColor,
                   ),
                 ),
               ),
@@ -151,73 +186,149 @@ class HistogramCard extends StatelessWidget {
 
   Widget _buildBinSelector() {
     final List<int> bins = [16, 32, 64, 256];
-    return Row(
+    final bool isModified = binCount != FilterDefaults.histogramBins || selectedChannel != HistogramChannel.intensity;
+    final int valuesPerBin = 256 ~/ binCount;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Bins:',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(width: 12),
-        ...bins.map((b) {
-          final isSelected = b == binCount;
-          return Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: InkWell(
-              onTap: () => onBinCountChanged(b),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  b.toString(),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: isSelected ? Colors.white : AppColors.textSecondary,
-                  ),
-                ),
+        Row(
+          children: [
+            const Text(
+              'Bins:',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textSecondary,
               ),
             ),
-          );
-        }),
+            const SizedBox(width: 12),
+            ...bins.map((b) {
+              final isSelected = b == binCount;
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: InkWell(
+                  onTap: () => onBinCountChanged(b),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: isSelected ? null : Border.all(color: AppColors.divider),
+                    ),
+                    child: Text(
+                      b.toString(),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: isSelected ? Colors.white : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+            const Spacer(),
+            if (isModified)
+              GestureDetector(
+                onTap: onResetHistogram,
+                child: const Text(
+                  'Reset view',
+                  style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w800),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '$binCount bins · $valuesPerBin value${valuesPerBin > 1 ? 's' : ''} per bar',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary.withOpacity(0.8),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGradientAxis() {
+    List<Color> gradientColors;
+    switch (selectedChannel) {
+      case HistogramChannel.red:
+        gradientColors = [Colors.black, Colors.red];
+        break;
+      case HistogramChannel.green:
+        gradientColors = [Colors.black, Colors.green];
+        break;
+      case HistogramChannel.blue:
+        gradientColors = [Colors.black, Colors.blue];
+        break;
+      case HistogramChannel.intensity:
+        gradientColors = [Colors.black, Colors.white];
+        break;
+    }
+
+    return Column(
+      children: [
+        Container(
+          height: 8,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            gradient: LinearGradient(colors: gradientColors),
+            border: Border.all(color: AppColors.divider, width: 0.5),
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('0', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+            Text('64', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+            Text('128', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+            Text('192', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+            Text('255', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+          ],
+        ),
       ],
     );
   }
 
   Widget _buildEducationalNote() {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Course Notes:',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: AppColors.primary,
-            ),
+          Row(
+            children: [
+              Icon(Icons.info_outline_rounded, size: 14, color: AppColors.primary.withOpacity(0.8)),
+              const SizedBox(width: 6),
+              const Text(
+                'Course Notes:',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 4),
-          Text(
-            '• Histogram: Shows the frequency of each intensity level.\n'
-            '• Binning: Groups intensity levels for display clarity.\n'
-            '• Equalization: Spreads intensity values to improve contrast.',
+          const SizedBox(height: 6),
+          const Text(
+            '• Histogram shows how often each channel or intensity value appears.\n'
+            '• Binning groups ranges of values for easier reading.\n'
+            '• Equalization spreads intensities to improve contrast.',
             style: TextStyle(
               fontSize: 10,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
-              height: 1.4,
+              height: 1.5,
             ),
           ),
         ],
@@ -227,13 +338,21 @@ class HistogramCard extends StatelessWidget {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Text(
-        histogramByChannel == null ? 'Pick an image to view histogram data.' : 'No pixel data available.',
-        style: const TextStyle(
-          fontSize: 12,
-          color: AppColors.textSecondary,
-          fontStyle: FontStyle.italic,
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.bar_chart_rounded, size: 32, color: AppColors.textSecondary.withOpacity(0.3)),
+          const SizedBox(height: 8),
+          Text(
+            histogramByChannel == null ? 'Import media to analyze histogram' : 'No pixel data available',
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontStyle: FontStyle.italic,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -249,16 +368,16 @@ class HistogramCard extends StatelessWidget {
     Color barColor;
     switch (selectedChannel) {
       case HistogramChannel.red:
-        barColor = const Color(0xFFEF4444).withOpacity(0.8);
+        barColor = const Color(0xFFEF4444);
         break;
       case HistogramChannel.green:
-        barColor = const Color(0xFF22C55E).withOpacity(0.8);
+        barColor = const Color(0xFF22C55E);
         break;
       case HistogramChannel.blue:
-        barColor = const Color(0xFF3B82F6).withOpacity(0.8);
+        barColor = const Color(0xFF3B82F6);
         break;
       case HistogramChannel.intensity:
-        barColor = const Color(0xFF475569).withOpacity(0.8);
+        barColor = const Color(0xFF64748B);
         break;
     }
 
@@ -267,7 +386,7 @@ class HistogramCard extends StatelessWidget {
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
-        maxY: maxVal == 0 ? 1 : maxVal * 1.1,
+        maxY: maxVal == 0 ? 1 : maxVal * 1.05,
         barTouchData: BarTouchData(enabled: false),
         titlesData: const FlTitlesData(show: false),
         gridData: const FlGridData(show: false),
@@ -278,8 +397,8 @@ class HistogramCard extends StatelessWidget {
             barRods: [
               BarChartRodData(
                 toY: groupedValues[i],
-                color: barColor,
-                width: binCount == 256 ? 1 : (binCount == 64 ? 3 : 6),
+                color: barColor.withOpacity(0.85),
+                width: binCount == 256 ? 0.8 : (binCount == 64 ? 2.5 : 5.0),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(1)),
               ),
             ],
@@ -308,7 +427,7 @@ class HistogramCard extends StatelessWidget {
           label,
           style: const TextStyle(
             fontSize: 11,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: AppColors.textSecondary,
           ),
         ),
@@ -316,9 +435,10 @@ class HistogramCard extends StatelessWidget {
         Text(
           value,
           style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
             color: AppColors.textPrimary,
+            letterSpacing: -0.5,
           ),
         ),
       ],

@@ -27,8 +27,8 @@ class ImageAlgorithms {
     double brightness,
     double contrast,
   ) {
-    if (brightness == 50 && contrast == 1.0) return src;
-    final double offset = (brightness - 50) * 4.0;
+    if (brightness == 0 && contrast == 1.0) return src;
+    final double offset = brightness * 2.0;
     final double factor = contrast;
     for (final pixel in src) {
       pixel.r = clampChannel((pixel.r - 128) * factor + 128 + offset);
@@ -321,13 +321,17 @@ class ImageAlgorithms {
   }
 
   static img.Image applyPosterization(img.Image src, int levels) {
-    if (levels <= 1) return src;
+    // If levels < 2, clamp it to 2 for predictable educational behavior
     final int numLevels = levels.clamp(2, 256);
-    final double step = 255 / (numLevels - 1);
+    final int maxLevel = numLevels - 1;
+    
     for (final pixel in src) {
-      pixel.r = clampChannel((pixel.r / step).round() * step);
-      pixel.g = clampChannel((pixel.g / step).round() * step);
-      pixel.b = clampChannel((pixel.b / step).round() * step);
+      // Formula: newValue = round(round(value / 255 * (levels - 1)) * 255 / (levels - 1))
+      // This maps each channel to a fixed number of evenly distributed levels between 0 and 255.
+      pixel.r = clampChannel(((pixel.r / 255 * maxLevel).round() * 255 / maxLevel).round());
+      pixel.g = clampChannel(((pixel.g / 255 * maxLevel).round() * 255 / maxLevel).round());
+      pixel.b = clampChannel(((pixel.b / 255 * maxLevel).round() * 255 / maxLevel).round());
+      // Alpha is preserved by the pixel iterator/setter in the image package
     }
     return src;
   }

@@ -20,6 +20,12 @@ class ColorIntensityControls extends StatelessWidget {
   final ValueChanged<double> onRedFactorChanged;
   final ValueChanged<double> onGreenFactorChanged;
   final ValueChanged<double> onBlueFactorChanged;
+
+  final VoidCallback onResetBrightness;
+  final VoidCallback onResetContrast;
+  final VoidCallback onResetRGB;
+  final VoidCallback onResetPosterization;
+
   final VoidCallback? onProcessingEnd;
 
   const ColorIntensityControls({
@@ -38,6 +44,10 @@ class ColorIntensityControls extends StatelessWidget {
     required this.onRedFactorChanged,
     required this.onGreenFactorChanged,
     required this.onBlueFactorChanged,
+    required this.onResetBrightness,
+    required this.onResetContrast,
+    required this.onResetRGB,
+    required this.onResetPosterization,
     this.onProcessingEnd,
   });
 
@@ -63,10 +73,12 @@ class ColorIntensityControls extends StatelessWidget {
           _buildSlider(
             label: 'Brightness',
             value: brightness,
+            defaultValue: FilterDefaults.brightness,
             min: FilterDefaults.brightnessMin,
             max: FilterDefaults.brightnessMax,
-            divisions: 100,
+            divisions: 200,
             onChanged: onBrightnessChanged,
+            onReset: onResetBrightness,
             onChangeEnd: (_) => onProcessingEnd?.call(),
             activeColor: AppColors.brightnessSlider,
             displayValue: brightness.toInt().toString(),
@@ -76,10 +88,12 @@ class ColorIntensityControls extends StatelessWidget {
           _buildSlider(
             label: 'Contrast',
             value: contrast,
+            defaultValue: FilterDefaults.contrast,
             min: FilterDefaults.contrastMin,
             max: FilterDefaults.contrastMax,
             divisions: 20,
             onChanged: onContrastChanged,
+            onReset: onResetContrast,
             onChangeEnd: (_) => onProcessingEnd?.call(),
             activeColor: AppColors.contrastSlider,
             displayValue: contrast.toStringAsFixed(1),
@@ -91,10 +105,12 @@ class ColorIntensityControls extends StatelessWidget {
             _buildSlider(
               label: 'Posterization',
               value: posterizationLevels.toDouble(),
+              defaultValue: FilterDefaults.posterization,
               min: FilterDefaults.posterizationMin,
               max: FilterDefaults.posterizationMax,
               divisions: 16,
               onChanged: (v) => onPosterizationChanged(v.toInt()),
+              onReset: onResetPosterization,
               onChangeEnd: (_) => onProcessingEnd?.call(),
               activeColor: Colors.teal,
               displayValue: posterizationLevels.toString(),
@@ -112,12 +128,31 @@ class ColorIntensityControls extends StatelessWidget {
   }
 
   Widget _buildRgbAdjusters() {
+    final bool isModified = redFactor != FilterDefaults.rgbFactor || 
+                           greenFactor != FilterDefaults.rgbFactor || 
+                           blueFactor != FilterDefaults.rgbFactor;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'CHANNEL BALANCING',
-          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'CHANNEL BALANCING',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+            ),
+            if (isModified)
+              TextButton(
+                onPressed: onResetRGB,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Reset All', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+              ),
+          ],
         ),
         const SizedBox(height: 8),
         Row(
@@ -171,15 +206,19 @@ class ColorIntensityControls extends StatelessWidget {
   Widget _buildSlider({
     required String label,
     required double value,
+    required double defaultValue,
     required double min,
     required double max,
     int? divisions,
     required ValueChanged<double> onChanged,
+    required VoidCallback onReset,
     ValueChanged<double>? onChangeEnd,
     required Color activeColor,
     required String displayValue,
     required String note,
   }) {
+    final bool isModified = value != defaultValue;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -194,6 +233,24 @@ class ColorIntensityControls extends StatelessWidget {
               ],
             ),
             Text(displayValue, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: activeColor)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Default: $defaultValue',
+              style: const TextStyle(fontSize: 10, color: AppColors.textMuted, fontWeight: FontWeight.w500),
+            ),
+            if (isModified)
+              GestureDetector(
+                onTap: onReset,
+                child: const Text(
+                  'Reset',
+                  style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold),
+                ),
+              ),
           ],
         ),
         SliderTheme(

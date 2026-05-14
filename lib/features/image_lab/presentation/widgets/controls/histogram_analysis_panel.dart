@@ -10,6 +10,7 @@ class HistogramAnalysisPanel extends StatelessWidget {
   final bool isLoading;
   final int binCount;
   final Function(int) onBinCountChanged;
+  final VoidCallback onResetHistogram;
 
   const HistogramAnalysisPanel({
     super.key,
@@ -19,6 +20,7 @@ class HistogramAnalysisPanel extends StatelessWidget {
     required this.isLoading,
     required this.binCount,
     required this.onBinCountChanged,
+    required this.onResetHistogram,
   });
 
   @override
@@ -30,6 +32,7 @@ class HistogramAnalysisPanel extends StatelessWidget {
       isLoading: isLoading,
       binCount: binCount,
       onBinCountChanged: onBinCountChanged,
+      onResetHistogram: onResetHistogram,
     );
   }
 }
